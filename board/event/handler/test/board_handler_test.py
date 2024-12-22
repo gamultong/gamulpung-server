@@ -19,7 +19,9 @@ from message.payload import (
     CheckMovablePayload,
     MovableResultPayload,
     InteractionEvent,
-    TileStateChangedPayload
+    SingleTileOpenedPayload,
+    TilesOpenedPayload,
+    FlagSetPayload
 )
 
 import unittest
@@ -220,7 +222,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
         await BoardEventHandler.receive_try_pointing(message)
 
-        # pointing-result, tile-state-changed 발행하는지 확인
+        # pointing-result, single-tile-opened 발행하는지 확인
         self.assertEqual(len(mock.mock_calls), 2)
 
         # pointing-result
@@ -236,12 +238,12 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertTrue(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-        # tile-state-changed
-        got: Message[PointingResultPayload] = mock.mock_calls[1].args[0]
+        # single-tile-opened
+        got: Message[SingleTileOpenedPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, InteractionEvent.TILE_STATE_CHANGED)
+        self.assertEqual(got.event, InteractionEvent.SINGLE_TILE_OPENED)
         # payload 확인
-        self.assertEqual(type(got.payload), TileStateChangedPayload)
+        self.assertEqual(type(got.payload), SingleTileOpenedPayload)
         self.assertEqual(got.payload.position, pointer)
 
         expected_tile = Tile.create(
@@ -251,10 +253,11 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             color=None,
             number=1
         )
-        fetched_tile = Tile.from_int(BoardHandler.fetch(start=pointer, end=pointer).data[0])
+        tiles = BoardHandler.fetch(start=pointer, end=pointer)
+        fetched_tile = Tile.from_int(tiles.data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
-        self.assertEqual(got.payload.tile, expected_tile)
+        self.assertEqual(got.payload.tile, tiles.to_str())
 
     @patch("event.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click_race(self, mock: AsyncMock):
@@ -282,7 +285,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             BoardEventHandler.receive_try_pointing(message)
         )
 
-        # 첫번째: pointing-result, tile-state-changed 두번째: pointing-result 발행하는지 확인
+        # 첫번째: pointing-result, single-tile-opened 두번째: pointing-result 발행하는지 확인
         self.assertEqual(len(mock.mock_calls), 3)
 
     @patch("event.EventBroker.publish")
@@ -338,7 +341,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
         await BoardEventHandler.receive_try_pointing(message)
 
-        # pointing-result, tile-state-changed 발행하는지 확인
+        # pointing-result, flag-set 발행하는지 확인
         self.assertEqual(len(mock.mock_calls), 2)
 
         # pointing-result
@@ -354,13 +357,15 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertTrue(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-        # tile-state-changed
-        got: Message[PointingResultPayload] = mock.mock_calls[1].args[0]
+        # flag-set
+        got: Message[FlagSetPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, InteractionEvent.TILE_STATE_CHANGED)
+        self.assertEqual(got.event, InteractionEvent.FLAG_SET)
         # payload 확인
-        self.assertEqual(type(got.payload), TileStateChangedPayload)
+        self.assertEqual(type(got.payload), FlagSetPayload)
         self.assertEqual(got.payload.position, pointer)
+        self.assertEqual(got.payload.color, color)
+        self.assertTrue(got.payload.is_set)
 
         expected_tile = Tile.create(
             is_open=False,
@@ -373,7 +378,6 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         fetched_tile = Tile.from_int(BoardHandler.fetch(start=pointer, end=pointer).data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
-        self.assertEqual(got.payload.tile, expected_tile)
 
     @patch("event.EventBroker.publish")
     async def test_try_pointing_pointable_closed_special_click_already_flag(self, mock: AsyncMock):
@@ -394,7 +398,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
         await BoardEventHandler.receive_try_pointing(message)
 
-        # pointing-result, tile-state-changed 발행하는지 확인
+        # pointing-result, flag-set 발행하는지 확인
         self.assertEqual(len(mock.mock_calls), 2)
 
         # pointing-result
@@ -410,13 +414,15 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertTrue(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-        # tile-state-changed
-        got: Message[PointingResultPayload] = mock.mock_calls[1].args[0]
+        # flag-set
+        got: Message[FlagSetPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, InteractionEvent.TILE_STATE_CHANGED)
+        self.assertEqual(got.event, InteractionEvent.FLAG_SET)
         # payload 확인
-        self.assertEqual(type(got.payload), TileStateChangedPayload)
+        self.assertEqual(type(got.payload), FlagSetPayload)
         self.assertEqual(got.payload.position, pointer)
+        self.assertIsNone(got.payload.color)
+        self.assertFalse(got.payload.is_set)
 
         expected_tile = Tile.create(
             is_open=False,
@@ -429,7 +435,6 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         fetched_tile = Tile.from_int(BoardHandler.fetch(start=pointer, end=pointer).data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
-        self.assertEqual(got.payload.tile, expected_tile)
 
     @patch("event.EventBroker.publish")
     async def test_try_pointing_not_pointable(self, mock: AsyncMock):

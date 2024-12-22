@@ -20,9 +20,10 @@ from message.payload import (
     MovableResultPayload,
     MovedPayload,
     InteractionEvent,
-    TileStateChangedPayload,
     YouDiedPayload,
-    TileUpdatedPayload,
+    SingleTileOpenedPayload,
+    TilesOpenedPayload,
+    FlagSetPayload,
     ConnClosedPayload,
     CursorQuitPayload,
     SetViewSizePayload,
@@ -32,7 +33,7 @@ from message.payload import (
 from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
-from board.data import Point, Tile
+from board.data import Point, Tile, Tiles
 
 """
 CursorEventHandler Test
@@ -854,74 +855,78 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         CursorHandler.watching = {}
 
     @patch("event.EventBroker.publish")
-    async def test_receive_tile_state_changed(self, mock: AsyncMock):
+    async def test_receive_flag_set(self, mock: AsyncMock):
         position = Point(-4, -3)
-        tile = Tile.from_int(0b00100111)  # not open, flag, 7
+        color = Color.BLUE
+        is_set = True
 
-        message: Message[TileStateChangedPayload] = Message(
-            event=InteractionEvent.TILE_STATE_CHANGED,
-            payload=TileStateChangedPayload(
+        message: Message[FlagSetPayload] = Message(
+            event=InteractionEvent.FLAG_SET,
+            payload=FlagSetPayload(
                 position=position,
-                tile=tile
+                color=color,
+                is_set=is_set
             )
         )
 
-        await CursorEventHandler.receive_tile_state_changed(message)
+        await CursorEventHandler.receive_flag_set(message)
 
-        # tile-updated 발행 확인
+        # flag-set 발행 확인
         self.assertEqual(len(mock.mock_calls), 1)
 
-        # tile-updated
-        got: Message[TileUpdatedPayload] = mock.mock_calls[0].args[0]
+        # flag-set
+        got: Message[FlagSetPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # origin_event
         self.assertIn("origin_event", got.header)
-        self.assertEqual(got.header["origin_event"], InteractionEvent.TILE_UPDATED)
+        self.assertEqual(got.header["origin_event"], InteractionEvent.FLAG_SET)
         # target_conns 확인, [A, B]
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 2)
         self.assertIn("A", got.header["target_conns"])
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
-        self.assertEqual(type(got.payload), TileUpdatedPayload)
+        self.assertEqual(type(got.payload), FlagSetPayload)
         self.assertEqual(got.payload.position, position)
-        self.assertEqual(got.payload.tile, tile.copy(hide_info=True))
+        self.assertEqual(got.payload.color, color)
+        self.assertEqual(got.payload.is_set, is_set)
 
     @patch("event.EventBroker.publish")
-    async def test_receive_tile_state_changed_mine_boom(self, mock: AsyncMock):
+    async def test_receive_single_tile_open(self, mock: AsyncMock):
         position = Point(-4, -3)
         tile = Tile.from_int(0b11000000)  # open, mine
+        tile_str = Tiles(data=bytearray([tile.data])).to_str()
 
-        message: Message[TileStateChangedPayload] = Message(
-            event=InteractionEvent.TILE_STATE_CHANGED,
-            payload=TileStateChangedPayload(
+        message: Message[SingleTileOpenedPayload] = Message(
+            event=InteractionEvent.SINGLE_TILE_OPENED,
+            payload=SingleTileOpenedPayload(
                 position=position,
-                tile=tile
+                tile=tile_str
             )
         )
 
-        await CursorEventHandler.receive_tile_state_changed(message)
+        await CursorEventHandler.receive_single_tile_opened(message)
 
-        # tile-updated, you-died 발행 확인
+        # single-tile-opened, you-died 발행 확인
         self.assertEqual(len(mock.mock_calls), 2)
 
-        # tile-updated
-        got: Message[TileUpdatedPayload] = mock.mock_calls[0].args[0]
+        # single-tile-opened
+        got: Message[SingleTileOpenedPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # origin_event
         self.assertIn("origin_event", got.header)
-        self.assertEqual(got.header["origin_event"], InteractionEvent.TILE_UPDATED)
+        self.assertEqual(got.header["origin_event"], InteractionEvent.SINGLE_TILE_OPENED)
         # target_conns 확인, [A, B]
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 2)
         self.assertIn("A", got.header["target_conns"])
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
-        self.assertEqual(type(got.payload), TileUpdatedPayload)
+        self.assertEqual(type(got.payload), SingleTileOpenedPayload)
         self.assertEqual(got.payload.position, position)
-        self.assertEqual(got.payload.tile.data, tile.data)
+        self.assertEqual(bytearray.fromhex(got.payload.tile)[0], tile.data)
 
         # you-died
         got: Message[YouDiedPayload] = mock.mock_calls[1].args[0]
@@ -943,6 +948,45 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         # datetime.now mocking 후 test
         # self.assertEqual(got.payload.revive_at, something)
         datetime.fromisoformat(got.payload.revive_at)
+
+    @patch("event.EventBroker.publish")
+    async def test_receive_tiles_opened(self, mock: AsyncMock):
+        start = Point(-3, 1)
+        end = Point(-2, 0)
+        tile_str = "1234123412341234"
+
+        message: Message[TilesOpenedPayload] = Message(
+            event=InteractionEvent.TILES_OPENED,
+            payload=TilesOpenedPayload(
+                start_p=start,
+                end_p=end,
+                tiles=tile_str
+            )
+        )
+
+        await CursorEventHandler.receive_tiles_opened(message)
+
+        # tiles-opened 확인
+        self.assertEqual(len(mock.mock_calls), 1)
+
+        # tiles-opened
+        got: Message[TilesOpenedPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], InteractionEvent.TILES_OPENED)
+        # target_conns 확인, [A, B, C]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 3)
+        self.assertIn("A", got.header["target_conns"])
+        self.assertIn("B", got.header["target_conns"])
+        self.assertIn("C", got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), TilesOpenedPayload)
+        self.assertEqual(got.payload.start_p, start)
+        self.assertEqual(got.payload.end_p, end)
+        self.assertEqual(got.payload.tiles, tile_str)
 
 
 class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):

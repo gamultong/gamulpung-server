@@ -1,7 +1,7 @@
 import asyncio
 from cursor.data import Cursor
 from cursor.data.handler import CursorHandler
-from board.data import Point, Tile
+from board.data import Point, Tile, Tiles
 from event import EventBroker
 from message import Message
 from datetime import datetime, timedelta
@@ -22,8 +22,9 @@ from message.payload import (
     MovableResultPayload,
     MovedPayload,
     InteractionEvent,
-    TileStateChangedPayload,
-    TileUpdatedPayload,
+    FlagSetPayload,
+    SingleTileOpenedPayload,
+    TilesOpenedPayload,
     YouDiedPayload,
     ConnClosedPayload,
     CursorQuitPayload,
@@ -77,7 +78,7 @@ class CursorEventHandler:
                 )
             )
 
-        cursors_with_view_including = CursorHandler.view_includes(p=cursor.position, exclude_ids=[cursor.conn_id])
+        cursors_with_view_including = CursorHandler.view_includes_point(p=cursor.position, exclude_ids=[cursor.conn_id])
         if len(cursors_with_view_including) > 0:
             # 나를 보고있는 커서들
             for other_cursor in cursors_with_view_including:
@@ -261,7 +262,7 @@ class CursorEventHandler:
             )
 
         # 새로운 위치를 바라보고 있는 커서들 찾기, 본인 제외
-        watchers_new_pos = CursorHandler.view_includes(p=new_position, exclude_ids=[cursor.conn_id])
+        watchers_new_pos = CursorHandler.view_includes_point(p=new_position, exclude_ids=[cursor.conn_id])
 
         original_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.conn_id)
         original_watchers = [CursorHandler.get_cursor(id) for id in original_watcher_ids]
@@ -305,34 +306,31 @@ class CursorEventHandler:
 
         await asyncio.gather(*publish_coroutines)
 
-    @EventBroker.add_receiver(InteractionEvent.TILE_STATE_CHANGED)
+    @EventBroker.add_receiver(InteractionEvent.SINGLE_TILE_OPENED)
     @staticmethod
-    async def receive_tile_state_changed(message: Message[TileStateChangedPayload]):
+    async def receive_single_tile_opened(message: Message[SingleTileOpenedPayload]):
         position = message.payload.position
-        tile = message.payload.tile
+        tile_str = message.payload.tile
 
-        pub_tile = tile
-        if not tile.is_open:
-            # 닫힌 타일의 mine, number 정보는 버리기
-            pub_tile = tile.copy(hide_info=True)
+        tiles = Tiles(data=bytearray.fromhex(tile_str))
+        tile = Tile.from_int(tiles.data[0])
 
         publish_coroutines = []
 
         # 변경된 타일을 보고있는 커서들에게 전달
-        view_cursors = CursorHandler.view_includes(p=position)
+        view_cursors = CursorHandler.view_includes_point(p=position)
         if len(view_cursors) > 0:
             pub_message = Message(
                 event="multicast",
-                header={"target_conns": [c.conn_id for c in view_cursors],
-                        "origin_event": InteractionEvent.TILE_UPDATED},
-                payload=TileUpdatedPayload(
-                    position=position,
-                    tile=pub_tile
-                )
+                header={
+                    "target_conns": [c.conn_id for c in view_cursors],
+                    "origin_event": message.event
+                },
+                payload=message.payload
             )
             publish_coroutines.append(EventBroker.publish(pub_message))
 
-        if not (tile.is_open and tile.is_mine):
+        if not tile.is_mine:
             await asyncio.gather(*publish_coroutines)
             return
 
@@ -342,6 +340,7 @@ class CursorEventHandler:
 
         nearby_cursors = CursorHandler.exists_range(start=start_p, end=end_p)
         if len(nearby_cursors) > 0:
+            # TODO: 하드코딩 없애기
             revive_at = datetime.now() + timedelta(minutes=3)
 
             for c in nearby_cursors:
@@ -349,15 +348,51 @@ class CursorEventHandler:
 
             pub_message = Message(
                 event="multicast",
-                header={"target_conns": [c.conn_id for c in nearby_cursors],
-                        "origin_event": InteractionEvent.YOU_DIED},
-                payload=YouDiedPayload(
-                    revive_at=revive_at.astimezone().isoformat()
-                )
+                header={
+                    "target_conns": [c.conn_id for c in nearby_cursors],
+                    "origin_event": InteractionEvent.YOU_DIED
+                },
+                payload=YouDiedPayload(revive_at=revive_at.astimezone().isoformat())
             )
             publish_coroutines.append(EventBroker.publish(pub_message))
 
         await asyncio.gather(*publish_coroutines)
+
+    @staticmethod
+    async def receive_tiles_opened(message: Message[TilesOpenedPayload]):
+        start_p = message.payload.start_p
+        end_p = message.payload.end_p
+
+        # 변경된 타일을 보고있는 커서들에게 전달
+        view_cursors = CursorHandler.view_includes_range(start=start_p, end=end_p)
+        if len(view_cursors) > 0:
+            pub_message = Message(
+                event="multicast",
+                header={
+                    "target_conns": [c.conn_id for c in view_cursors],
+                    "origin_event": message.event
+                },
+                payload=message.payload
+            )
+            await EventBroker.publish(pub_message)
+
+    @EventBroker.add_receiver(InteractionEvent.FLAG_SET)
+    @staticmethod
+    async def receive_flag_set(message: Message[FlagSetPayload]):
+        position = message.payload.position
+
+        # 변경된 타일을 보고있는 커서들에게 전달
+        view_cursors = CursorHandler.view_includes_point(p=position)
+        if len(view_cursors) > 0:
+            pub_message = Message(
+                event="multicast",
+                header={
+                    "target_conns": [c.conn_id for c in view_cursors],
+                    "origin_event": message.event
+                },
+                payload=message.payload
+            )
+            await EventBroker.publish(pub_message)
 
     @EventBroker.add_receiver(NewConnEvent.CONN_CLOSED)
     @staticmethod

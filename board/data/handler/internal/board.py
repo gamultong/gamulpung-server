@@ -1,4 +1,5 @@
 from board.data import Point, Section, Tile, Tiles
+from cursor.data import Color
 
 
 def init_first_section() -> dict[int, dict[int, Section]]:
@@ -55,21 +56,176 @@ class BoardHandler:
         return Tiles(data=out)
 
     @staticmethod
-    def update_tile(p: Point, tile: Tile):
-        tiles = Tiles(data=bytearray([tile.data]))
+    def open_tile(p: Point) -> Tile:
+        section, inner_p = BoardHandler._get_section_from_abs_point(p)
 
-        sec_p = Point(x=p.x // Section.LENGTH, y=p.y // Section.LENGTH)
-        section = BoardHandler.sections[sec_p.y][sec_p.x]
+        tiles = section.fetch(inner_p)
 
-        inner_p = Point(
-            x=p.x - section.abs_x,
-            y=p.y - section.abs_y
-        )
+        tile = Tile.from_int(tiles.data[0])
+        tile.is_open = True
+
+        tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
+        BoardHandler._save_section(section)
 
-        # 지금은 안 해도 되긴 할텐데 일단 해 놓기
-        BoardHandler.sections[sec_p.y][sec_p.x] = section
+        return tile
+
+    @staticmethod
+    def open_tiles_cascade(p: Point) -> tuple[Point, Point, Tiles]:
+        """
+        지정된 타일부터 주변 타일들을 연쇄적으로 개방한다.
+        빈칸들과 빈칸과 인접한숫자 타일까지 개방하며, 섹션 가장자리 데이터가 새로운 섹션으로 인해 중간에 수정되는 것을 방지하기 위해
+        섹션을 사용할 때 인접 섹션이 존재하지 않으면 미리 만들어 놓는다.
+        """
+        # 탐색하며 발견한 섹션들
+        sections: list[Section] = []
+
+        def fetch_section(sec_p: Point) -> Section:
+            # 가져오는 데이터의 일관성을 위해 주변 섹션을 미리 만들어놓기
+            delta = [
+                (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
+                (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
+            ]
+            for dx, dy in delta:
+                new_p = Point(x=sec_p.x+dx, y=sec_p.y+dy)
+                _ = BoardHandler._get_or_create_section(new_p.x, new_p.y)
+
+            new_section = BoardHandler._get_or_create_section(sec_p.x, sec_p.y)
+            return new_section
+
+        def get_section(p: Point) -> tuple[Section, Point]:
+            sec_p = Point(
+                x=p.x // Section.LENGTH,
+                y=p.y // Section.LENGTH
+            )
+
+            section = None
+            for sec in sections:
+                # 이미 가지고 있으면 반환
+                if sec.p == sec_p:
+                    section = sec
+                    break
+
+            # 새로 가져오기
+            if section is None:
+                section = fetch_section(sec_p)
+                sections.append(section)
+
+            inner_p = Point(
+                x=p.x - section.abs_x,
+                y=p.y - section.abs_y
+            )
+
+            return section, inner_p
+
+        queue = []
+        queue.append(p)
+
+        visited = set()
+        visited.add((p.x, p.y))
+
+        # 추후 fetch 범위
+        min_x, min_y = p.x, p.y
+        max_x, max_y = p.x, p.y
+
+        while len(queue) > 0:
+            p = queue.pop(0)
+
+            # 범위 업데이트
+            min_x, min_y = min(min_x, p.x), min(min_y, p.y)
+            max_x, max_y = max(max_x, p.x), max(max_y, p.y)
+
+            sec, inner_p = get_section(p)
+
+            # TODO: section.fetch_one(point) 같은거 만들어야 할 듯
+            tile = Tile.from_int(sec.fetch(inner_p).data[0])
+
+            # 타일 열어주기
+            tile.is_open = True
+            tile.is_flag = False
+            tile.color = None
+
+            sec.update(Tiles(data=bytearray([tile.data])), inner_p)
+
+            if tile.number is not None:
+                # 빈 타일 주변 number까지만 열어야 함.
+                continue
+
+            # (x, y) 순서
+            delta = [
+                (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
+                (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
+            ]
+
+            # 큐에 추가될 포인트 리스트
+            temp_list = []
+
+            for dx, dy in delta:
+                np = Point(x=p.x+dx, y=p.y+dy)
+
+                if (np.x, np.y) in visited:
+                    continue
+                visited.add((np.x, np.y))
+
+                sec, inner_p = get_section(np)
+
+                nearby_tile = Tile.from_int(sec.fetch(inner_p).data[0])
+                if nearby_tile.is_open:
+                    # 이미 연 타일, 혹은 이전에 존재하던 열린 number 타일
+                    continue
+
+                temp_list.append(np)
+
+            queue.extend(temp_list)
+
+        # 섹션 변경사항 모두 저장
+        for section in sections:
+            BoardHandler._save_section(section)
+
+        start_p = Point(min_x, max_y)
+        end_p = Point(max_x, min_y)
+        tiles = BoardHandler.fetch(start_p, end_p)
+
+        return start_p, end_p, tiles
+
+    @staticmethod
+    def set_flag_state(p: Point, state: bool, color: Color | None = None) -> Tile:
+        section, inner_p = BoardHandler._get_section_from_abs_point(p)
+
+        tiles = section.fetch(inner_p)
+
+        tile = Tile.from_int(tiles.data[0])
+        tile.is_flag = state
+        tile.color = color
+
+        tiles.data[0] = tile.data
+
+        section.update(data=tiles, start=inner_p)
+        BoardHandler._save_section(section)
+
+        return tile
+
+    def _get_section_from_abs_point(abs_p: Point) -> tuple[Section, Point]:
+        """
+        절대 좌표 abs_p를 포함하는 섹션, 그리고 abs_p의 섹션 내부 좌표를 반환한다.
+        """
+        sec_p = Point(
+            x=abs_p.x // Section.LENGTH,
+            y=abs_p.y // Section.LENGTH
+        )
+
+        section = BoardHandler._get_or_create_section(sec_p.x, sec_p.y)
+
+        inner_p = Point(
+            x=abs_p.x - section.abs_x,
+            y=abs_p.y - section.abs_y
+        )
+
+        return section, inner_p
+
+    def _save_section(section: Section):
+        BoardHandler.sections[section.p.y][section.p.x] = section
 
     @staticmethod
     def _get_or_create_section(x: int, y: int) -> Section:

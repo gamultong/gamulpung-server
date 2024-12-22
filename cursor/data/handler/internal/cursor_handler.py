@@ -64,7 +64,7 @@ class CursorHandler:
 
     # 커서 view에 tile이 포함되는가
     @staticmethod
-    def view_includes(p: Point, exclude_ids: list[str] = []) -> list[Cursor]:
+    def view_includes_point(p: Point, exclude_ids: list[str] = []) -> list[Cursor]:
         result = []
         for cursor_id in CursorHandler.cursor_dict:
             if cursor_id in exclude_ids:
@@ -74,6 +74,36 @@ class CursorHandler:
 
             # 커서 뷰 범위를 벗어나는가
             if not cursor.check_in_view(p):
+                continue
+
+            result.append(cursor)
+
+        return result
+
+    # 커서 view에 range가 포함되는가
+    @staticmethod
+    def view_includes_range(start: Point, end: Point, exclude_ids: list[str] = []) -> list[Cursor]:
+        result = []
+        for cursor_id in CursorHandler.cursor_dict:
+            if cursor_id in exclude_ids:
+                continue
+
+            cursor = CursorHandler.cursor_dict[cursor_id]
+
+            left_top = Point(
+                x=cursor.position.x - cursor.width,
+                y=cursor.position.y + cursor.height
+            )
+            right_bottom = Point(
+                x=cursor.position.x + cursor.width,
+                y=cursor.position.y - cursor.height
+            )
+
+            # left_top이 end보다 오른쪽 혹은 아래인가
+            if left_top.x > end.x or left_top.y < end.y:
+                continue
+            # right_bottom이 start 보다 왼쪽 혹은 위인가
+            if right_bottom.x < start.x or right_bottom.y > start.y:
                 continue
 
             result.append(cursor)

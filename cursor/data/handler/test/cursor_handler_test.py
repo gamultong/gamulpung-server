@@ -105,8 +105,8 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result), 1)
         self.assertIn("C", result)
 
-    def test_view_includes(self):
-        result = CursorHandler.view_includes(p=Point(-3, 0))
+    def test_view_includes_point(self):
+        result = CursorHandler.view_includes_point(p=Point(-3, 0))
 
         result = [c.conn_id for c in result]
 
@@ -114,13 +114,36 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("A", result)
         self.assertIn("B", result)
 
-    def test_view_includes_exclude_id(self):
-        result = CursorHandler.view_includes(p=Point(-3, 0), exclude_ids=["A"])
+    def test_view_includes_point_exclude_id(self):
+        result = CursorHandler.view_includes_point(p=Point(-3, 0), exclude_ids=["A"])
 
         result = [c.conn_id for c in result]
 
         self.assertEqual(len(result), 1)
         self.assertIn("B", result)
+
+    def test_view_includes_range(self):
+        start = Point(-3, 1)
+        end = Point(-2, 0)
+        result = CursorHandler.view_includes_range(start=start, end=end)
+
+        result = [c.conn_id for c in result]
+
+        self.assertEqual(len(result), 3)
+        self.assertIn("A", result)
+        self.assertIn("B", result)
+        self.assertIn("C", result)
+
+    def test_view_includes_range__exclude_id(self):
+        start = Point(-3, 1)
+        end = Point(-2, 0)
+        result = CursorHandler.view_includes_range(start=start, end=end, exclude_ids=["A"])
+
+        result = [c.conn_id for c in result]
+
+        self.assertEqual(len(result), 2)
+        self.assertIn("B", result)
+        self.assertIn("C", result)
 
     def test_add_watcher(self):
         CursorHandler.add_watcher(

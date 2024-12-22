@@ -1,14 +1,16 @@
 from .base_payload import Payload
 from .parsable_payload import ParsablePayload
 from board.data import Point, Tile
+from cursor.data import Color
 from dataclasses import dataclass
 from enum import Enum
 
 
 class InteractionEvent(str, Enum):
     YOU_DIED = "you-died"
-    TILE_UPDATED = "tile-updated"
-    TILE_STATE_CHANGED = "tile-state-changed"
+    SINGLE_TILE_OPENED = "single-tile-opened"
+    TILES_OPENED = "tiles-opened"
+    FLAG_SET = "flag-set"
 
 
 @dataclass
@@ -17,12 +19,20 @@ class YouDiedPayload(Payload):
 
 
 @dataclass
-class TileUpdatedPayload(Payload):
+class SingleTileOpenedPayload(Payload):
     position: ParsablePayload[Point]
-    tile: ParsablePayload[Tile]
+    tile: str
 
 
 @dataclass
-class TileStateChangedPayload(Payload):
+class TilesOpenedPayload(Payload):
+    start_p: ParsablePayload[Point]
+    end_p: ParsablePayload[Point]
+    tiles: str
+
+
+@dataclass
+class FlagSetPayload(Payload):
     position: ParsablePayload[Point]
-    tile: ParsablePayload[Tile]
+    is_set: bool
+    color: Color | None
