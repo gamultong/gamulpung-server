@@ -8,6 +8,7 @@ from enum import Enum
 
 class NewConnEvent(str, Enum):
     NEW_CONN = "new-conn"
+    NEW_CURSOR_CANDIDATE = "new-cursor-candidate"
     CURSORS = "cursors"
     MY_CURSOR = "my-cursor"
     CONN_CLOSED = "conn-closed"
@@ -20,6 +21,14 @@ class NewConnPayload(Payload):
     conn_id: str
     width: int
     height: int
+
+
+@dataclass
+class NewCursorCandidatePayload(Payload):
+    conn_id: str
+    width: int
+    height: int
+    position: ParsablePayload[Point]
 
 
 @dataclass

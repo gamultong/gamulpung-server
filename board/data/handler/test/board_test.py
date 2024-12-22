@@ -118,6 +118,27 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         self.assertEqual(tile, result)
 
+    def test_get_random_open_position(self):
+        for _ in range(10):
+            point = BoardHandler.get_random_open_position()
+
+            tiles = BoardHandler.fetch(point, point)
+            tile = Tile.from_int(tiles.data[0])
+
+            self.assertTrue(tile.is_open)
+
+    def test_get_random_open_position_one_section_one_open(self):
+        sec = BoardHandler.sections[-1][0]
+        BoardHandler.sections = {-1: {0: sec}}
+
+        for _ in range(10):
+            point = BoardHandler.get_random_open_position()
+
+            tiles = BoardHandler.fetch(point, point)
+            tile = Tile.from_int(tiles.data[0])
+
+            self.assertTrue(tile.is_open)
+
 
 if __name__ == "__main__":
     unittest.main()

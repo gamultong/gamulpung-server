@@ -15,8 +15,10 @@ class CursorHandler:
     watching: dict[str, list[str]] = {}
 
     @staticmethod
-    def create_cursor(conn_id: str):
+    def create_cursor(conn_id: str, position: Point, width: int, height: int):
         cursor = Cursor.create(conn_id)
+        cursor.position = position
+        cursor.set_size(width=width, height=height)
 
         CursorHandler.cursor_dict[conn_id] = cursor
 

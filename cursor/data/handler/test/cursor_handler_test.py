@@ -50,11 +50,17 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
 
     def test_create(self):
         conn_id = "example_conn_id"
-        _ = CursorHandler.create_cursor(conn_id)
+        width, height = 10, 10
+        position = Point(1, 1)
+
+        _ = CursorHandler.create_cursor(conn_id, position, width, height)
 
         self.assertIn(conn_id, CursorHandler.cursor_dict)
         self.assertEqual(type(CursorHandler.cursor_dict[conn_id]), Cursor)
         self.assertEqual(CursorHandler.cursor_dict[conn_id].conn_id, conn_id)
+        self.assertEqual(CursorHandler.cursor_dict[conn_id].width, width)
+        self.assertEqual(CursorHandler.cursor_dict[conn_id].height, height)
+        self.assertEqual(CursorHandler.cursor_dict[conn_id].position, position)
 
     def test_get_cursor(self):
         a_cur: Cursor | None = CursorHandler.get_cursor("A")

@@ -45,3 +45,7 @@ def setup_board():
                 -1: Section(Point(-1, -1), tile_state_3)
             }
         }
+    BoardHandler.max_x = 0
+    BoardHandler.min_x = -1
+    BoardHandler.max_y = 0
+    BoardHandler.min_y = -1

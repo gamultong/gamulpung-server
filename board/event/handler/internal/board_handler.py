@@ -10,6 +10,7 @@ from message.payload import (
     TilesEvent,
     NewConnEvent,
     NewConnPayload,
+    NewCursorCandidatePayload,
     TryPointingPayload,
     PointingResultPayload,
     PointEvent,
@@ -37,14 +38,35 @@ class BoardEventHandler():
     async def receive_new_conn(message: Message[NewConnPayload]):
         sender = message.payload.conn_id
 
-        # 0, 0 기준으로 fetch
         width = message.payload.width
         height = message.payload.height
 
-        start_p = Point(x=-width, y=height)
-        end_p = Point(x=width, y=-height)
+        # 커서의 위치
+        position = BoardHandler.get_random_open_position()
 
-        await BoardEventHandler._publish_tiles(start_p, end_p, [sender])
+        start_p = Point(
+            x=position.x - width,
+            y=position.y + height
+        )
+        end_p = Point(
+            x=position.x+width,
+            y=position.y-height
+        )
+        publish_tiles = BoardEventHandler._publish_tiles(start_p, end_p, [sender])
+
+        message = Message(
+            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
+            payload=NewCursorCandidatePayload(
+                conn_id=message.payload.conn_id,
+                width=width, height=height,
+                position=position
+            )
+        )
+
+        await asyncio.gather(
+            publish_tiles,
+            EventBroker.publish(message)
+        )
 
     @staticmethod
     async def _publish_tiles(start: Point, end: Point, to: list[str]):

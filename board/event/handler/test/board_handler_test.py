@@ -11,6 +11,7 @@ from message.payload import (
     TilesPayload,
     NewConnEvent,
     NewConnPayload,
+    NewCursorCandidatePayload,
     TryPointingPayload,
     PointingResultPayload,
     PointEvent,
@@ -127,41 +128,50 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
     @patch("event.EventBroker.publish")
     async def test_receive_new_conn(self, mock: AsyncMock):
         conn_id = "ayo"
+        width = 1
+        height = 1
         message = Message(
             event=NewConnEvent.NEW_CONN,
-            payload=NewConnPayload(conn_id=conn_id, width=1, height=1)
+            payload=NewConnPayload(conn_id=conn_id, width=width, height=height)
         )
 
         await BoardEventHandler.receive_new_conn(message)
 
-        mock.assert_called_once()
-        got: Message[TilesPayload] = mock.mock_calls[0].args[0]
+        # tiles, new-cursor-candidate
+        self.assertEqual(len(mock.mock_calls), 2)
 
+        # new-cursor-candidate
+        got: Message[NewCursorCandidatePayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, NewConnEvent.NEW_CURSOR_CANDIDATE)
+
+        self.assertEqual(type(got.payload), NewCursorCandidatePayload)
+        self.assertEqual(got.payload.conn_id, conn_id)
+        self.assertEqual(got.payload.width, width)
+        self.assertEqual(got.payload.height, height)
+
+        position = got.payload.position
+        tiles = BoardHandler.fetch(position, position)
+        tile = Tile.from_int(tiles.data[0])
+        self.assertTrue(tile.is_open)
+
+        # tiles
+        got: Message[TilesPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
-
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 1)
-        self.assertEqual(got.header["target_conns"][0], conn_id)
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], TilesEvent.TILES)
 
         self.assertEqual(type(got.payload), TilesPayload)
-        self.assertEqual(got.payload.start_p.x, -1)
-        self.assertEqual(got.payload.start_p.y, 1)
-        self.assertEqual(got.payload.end_p.x, 1)
-        self.assertEqual(got.payload.end_p.y, -1)
+        self.assertEqual(got.payload.start_p, Point(position.x-width, position.y+height))
+        self.assertEqual(got.payload.end_p, Point(position.x+width, position.y-height))
 
         # 하는 김에 마스킹까지 같이 테스트
-        empty_open = Tile.from_int(0b10000000)
-        one_open = Tile.from_int(0b10000001)
-        closed = Tile.from_int(0b00000000)
-        blue_flag = Tile.from_int(0b00110000)
-        purple_flag = Tile.from_int(0b00111000)
+        expected = BoardHandler.fetch(got.payload.start_p, got.payload.end_p)
+        expected.hide_info()
 
-        expected = Tiles(data=bytearray([
-            one_open.data, one_open.data, blue_flag.data,
-            empty_open.data, one_open.data, closed.data,
-            one_open.data, one_open.data, purple_flag.data
-        ]))
         self.assertEqual(got.payload.tiles, expected.to_str())
 
 

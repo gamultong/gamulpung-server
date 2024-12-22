@@ -5,7 +5,6 @@ from cursor.event.handler import CursorEventHandler
 from message import Message
 from message.payload import (
     NewConnEvent,
-    NewConnPayload,
     MyCursorPayload,
     CursorsPayload,
     PointEvent,
@@ -28,7 +27,8 @@ from message.payload import (
     CursorQuitPayload,
     SetViewSizePayload,
     ErrorEvent,
-    ErrorPayload
+    ErrorPayload,
+    NewCursorCandidatePayload
 )
 from .fixtures import setup_cursor_locations
 import unittest
@@ -42,7 +42,7 @@ Test
 ✅ : test 통과
 ❌ : test 실패
 🖊️ : test 작성
-- new-conn-receiver
+- new-cursor-receiver
     - ✅| normal-case
         - ✅| without-cursors
         - 작성해야함
@@ -57,16 +57,16 @@ Test
 """
 
 
-class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCase):
+class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         CursorHandler.cursor_dict = {}
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
     @patch("event.EventBroker.publish")
-    async def test_new_conn_receive_without_cursors(self, mock: AsyncMock):
+    async def test_new_cursor_candidate_receive_without_cursors(self, mock: AsyncMock):
         """
-        new-conn-receiver
+        new-cursor-candidate-receiver
         without-cursors
 
         description:
@@ -74,7 +74,7 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         ----------------------------
         trigger event ->
 
-        - new-conn : message[NewConnPayload]
+        - new-cursor-candidate : message[NewConnPayload]
             - header :
                 - sender : conn_id
             - descrption :
@@ -111,19 +111,21 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         expected_conn_id = "example"
         expected_height = 100
         expected_width = 100
+        position = Point(1, 1)
 
         # trigger message 생성
         message = Message(
-            event=NewConnEvent.NEW_CONN,
-            payload=NewConnPayload(
+            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
+            payload=NewCursorCandidatePayload(
                 conn_id=expected_conn_id,
                 width=expected_width,
-                height=expected_height
+                height=expected_height,
+                position=position
             )
         )
 
         # trigger event
-        await CursorEventHandler.receive_new_conn(message)
+        await CursorEventHandler.receive_new_cursor_candidate(message)
 
         # 호출 여부
         self.assertEqual(len(mock.mock_calls), 1)
@@ -143,24 +145,24 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         # message.payload
         self.assertEqual(type(got.payload), MyCursorPayload)
         self.assertIsNone(got.payload.pointer)
-        self.assertEqual(got.payload.position.x, 0)
-        self.assertEqual(got.payload.position.y, 0)
+        self.assertEqual(got.payload.position, position)
         self.assertIn(got.payload.color, Color)
 
     @patch("event.EventBroker.publish")
-    async def test_new_conn_receive_without_cursors_race(self, mock: AsyncMock):
+    async def test_new_cursor_candidate_receive_without_cursors_race(self, mock: AsyncMock):
         conn_1 = "1"
         conn_2 = "2"
         height = 1
         width = 1
+        position = Point(0, 0)
 
-        new_conn_1_msg = Message(
-            event=NewConnEvent.NEW_CONN,
-            payload=NewConnPayload(conn_id=conn_1, width=width, height=height)
+        new_cursor_1_msg = Message(
+            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
+            payload=NewCursorCandidatePayload(conn_id=conn_1, width=width, height=height, position=position)
         )
-        new_conn_2_msg = Message(
-            event=NewConnEvent.NEW_CONN,
-            payload=NewConnPayload(conn_id=conn_2, width=width, height=height)
+        new_cursor_2_msg = Message(
+            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
+            payload=NewCursorCandidatePayload(conn_id=conn_2, width=width, height=height, position=position)
         )
 
         # 코루틴 스위칭을 위해 sleep. 이게 되는 이유를 모르겠다.
@@ -169,14 +171,14 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         mock.side_effect = sleep
 
         await asyncio.gather(
-            CursorEventHandler.receive_new_conn(new_conn_1_msg),
-            CursorEventHandler.receive_new_conn(new_conn_2_msg)
+            CursorEventHandler.receive_new_cursor_candidate(new_cursor_1_msg),
+            CursorEventHandler.receive_new_cursor_candidate(new_cursor_2_msg)
         )
         # 첫번째 conn: my-cursor, 두번째 conn: my-cursor, cursors * 2
         self.assertEqual(len(mock.mock_calls), 4)
 
     @patch("event.EventBroker.publish")
-    async def test_receive_new_conn_with_cursors(self, mock: AsyncMock):
+    async def test_receive_new_cursor_candidate_with_cursors(self, mock: AsyncMock):
         # /docs/example/cursor-location.png
         # But B is at 0,0
         CursorHandler.cursor_dict = {
@@ -208,17 +210,19 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         new_conn_id = "B"
         height = 7
         width = 7
+        position = Point(0, 0)
 
         message = Message(
-            event=NewConnEvent.NEW_CONN,
-            payload=NewConnPayload(
+            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
+            payload=NewCursorCandidatePayload(
                 conn_id=new_conn_id,
                 width=height,
-                height=width
+                height=width,
+                position=position
             )
         )
 
-        await CursorEventHandler.receive_new_conn(message)
+        await CursorEventHandler.receive_new_cursor_candidate(message)
 
         # publish 횟수
         self.assertEqual(len(mock.mock_calls), 3)
@@ -236,7 +240,7 @@ class CursorEventHandler_NewConnReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertEqual(got.header["origin_event"], NewConnEvent.MY_CURSOR)
         # payload 확인
         self.assertEqual(type(got.payload), MyCursorPayload)
-        self.assertEqual(got.payload.position, Point(0, 0))
+        self.assertEqual(got.payload.position, position)
         self.assertIsNone(got.payload.pointer)
         self.assertIn(got.payload.color, Color)
 

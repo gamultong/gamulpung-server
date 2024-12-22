@@ -30,16 +30,20 @@ from message.payload import (
     CursorQuitPayload,
     SetViewSizePayload,
     ErrorEvent,
-    ErrorPayload
+    ErrorPayload,
+    NewCursorCandidatePayload
 )
 
 
 class CursorEventHandler:
-    @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
+    @EventBroker.add_receiver(NewConnEvent.NEW_CURSOR_CANDIDATE)
     @staticmethod
-    async def receive_new_conn(message: Message[NewConnPayload]):
-        cursor = CursorHandler.create_cursor(message.payload.conn_id)
-        cursor.set_size(message.payload.width, message.payload.height)
+    async def receive_new_cursor_candidate(message: Message[NewCursorCandidatePayload]):
+        cursor = CursorHandler.create_cursor(
+            conn_id=message.payload.conn_id,
+            position=message.payload.position,
+            width=message.payload.width, height=message.payload.height
+        )
 
         publish_coroutines = []
 
