@@ -166,7 +166,7 @@ class SectionApplyNeighborTestCase(unittest.TestCase):
         # 왼쪽 위 섹션: 오른쪽 끝을 감싸는 지뢰들
         self.left_top_section = Section(Point(-1, 1), data=bytearray([
             MINES_OF(0), MINES_OF(1), MINES_OF(2), MINES_OF(2),
-            MINES_OF(0), MINES_OF(2), MINE_TILE__, MINE_TILE__,
+            MINES_OF(0), MINES_OF(2), MINE_TILE__, OPEN_MINE__,
             MINES_OF(0), MINES_OF(3), MINE_TILE__, MINES_OF(5),
             MINES_OF(0), MINES_OF(2), MINE_TILE__, MINE_TILE__
         ]))
@@ -174,19 +174,19 @@ class SectionApplyNeighborTestCase(unittest.TestCase):
         self.right_top_section = Section(Point(0, 1), data=bytearray([
             MINES_OF(1), MINES_OF(1), MINES_OF(0), MINES_OF(0),
             MINE_TILE__, MINES_OF(2), MINES_OF(0), MINES_OF(0),
-            MINE_TILE__, MINES_OF(4), MINES_OF(1), MINES_OF(0),
-            MINE_TILE__, MINE_TILE__, MINES_OF(1), MINES_OF(0)
+            OPEN_MINE__, MINES_OF(4), MINES_OF(1), MINES_OF(0),
+            OPEN_MINE__, MINE_TILE__, MINES_OF(1), MINES_OF(0)
         ]))
         # 왼쪽 아래 섹션: 오른쪽 아래 끝단 2개 지뢰
         self.left_bottom_section = Section(Point(-1, 0), data=bytearray([
             MINES_OF(0), MINES_OF(0), MINES_OF(0), MINES_OF(0),
             MINES_OF(0), MINES_OF(0), MINES_OF(1), MINES_OF(1),
             MINES_OF(0), MINES_OF(0), MINES_OF(2), MINE_TILE__,
-            MINES_OF(0), MINES_OF(0), MINES_OF(2), MINE_TILE__
+            MINES_OF(0), MINES_OF(0), MINES_OF(2), OPEN_MINE__
         ]))
         # 오른쪽 아래 섹션: 왼쪽 위 끝단을 감싸는 지뢰들
         self.right_bottom_section = Section(Point(0, 0), data=bytearray([
-            MINES_OF(3), MINE_TILE__, MINES_OF(2), MINES_OF(0),
+            MINES_OF(3), OPEN_MINE__, MINES_OF(2), MINES_OF(0),
             MINE_TILE__, MINE_TILE__, MINES_OF(2), MINES_OF(0),
             MINES_OF(2), MINES_OF(2), MINES_OF(1), MINES_OF(0),
             MINES_OF(0), MINES_OF(0), MINES_OF(0), MINES_OF(0)
@@ -276,7 +276,7 @@ class SectionApplyNeighborTestCase(unittest.TestCase):
             self.right_top_section.data[8],  # x=0, y=1
             self.right_top_section.data[12],  # x=0, y=0
         ]
-        self.assertEqual(l.count(MINE_TILE__), 2)
+        self.assertEqual(l.count(MINE_TILE__) + l.count(OPEN_MINE__), 2)
 
     def test_apply_neighbor_num_overflow_right_left(self):
         self.right_top_section.apply_neighbor_horizontal(
@@ -293,10 +293,11 @@ class SectionApplyNeighborTestCase(unittest.TestCase):
             self.left_top_section.data[15],  # x=3, y=0
 
         ]
-        self.assertEqual(l.count(MINE_TILE__), 4)
+        self.assertEqual(l.count(MINE_TILE__) + l.count(OPEN_MINE__), 4)
 
 
 MINE_TILE__ = 0b01000000
+OPEN_MINE__ = 0b11000000
 
 
 def MINES_OF(n: int) -> int:

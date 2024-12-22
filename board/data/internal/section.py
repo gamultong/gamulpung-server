@@ -77,14 +77,14 @@ class Section:
         self_idx = (self_y * Section.LENGTH) + self_x
         neighbor_idx = (neighbor_y * Section.LENGTH) + neighbor_x
 
-        if self.data[self_idx] == MINE_TILE:
+        if self.data[self_idx] & MINE_TILE:
             affect_origin_mines_to_new(
                 new_tiles=neighbor.data,
                 x_range=(neighbor_x, neighbor_x),
                 y_range=(neighbor_y, neighbor_y)
             )
 
-        if neighbor.data[neighbor_idx] == MINE_TILE:
+        if neighbor.data[neighbor_idx] & MINE_TILE:
             affect_new_mines_to_origin(
                 origin_tiles=self.data,
                 new_tiles=neighbor.data,
@@ -113,14 +113,14 @@ class Section:
             leftmost = max(0, x - 1)
             rightmost = min(x + 1, Section.LENGTH - 1)
 
-            if self.data[self_idx] == MINE_TILE:
+            if self.data[self_idx] & MINE_TILE:
                 affect_origin_mines_to_new(
                     new_tiles=neighbor.data,
                     x_range=(leftmost, rightmost),
                     y_range=(neighbor_y, neighbor_y)
                 )
 
-            if neighbor.data[neighbor_idx] == MINE_TILE:
+            if neighbor.data[neighbor_idx] & MINE_TILE:
                 affect_new_mines_to_origin(
                     origin_tiles=self.data,
                     new_tiles=neighbor.data,
@@ -149,14 +149,14 @@ class Section:
             top = min(y + 1, Section.LENGTH - 1)
             bottom = max(0, y - 1)
 
-            if self.data[self_idx] == MINE_TILE:
+            if self.data[self_idx] & MINE_TILE:
                 affect_origin_mines_to_new(
                     new_tiles=neighbor.data,
                     x_range=(neighbor_x, neighbor_x),
                     y_range=(bottom, top)
                 )
 
-            if neighbor.data[neighbor_idx] == MINE_TILE:
+            if neighbor.data[neighbor_idx] & MINE_TILE:
                 affect_new_mines_to_origin(
                     origin_tiles=self.data,
                     new_tiles=neighbor.data,
@@ -192,7 +192,7 @@ class Section:
                 cur_tile = data[rand_idx]
 
                 # 이미 지뢰가 존재
-                if cur_tile == MINE_TILE:
+                if cur_tile & MINE_TILE:
                     continue
 
                 # 주변 타일 검사
@@ -222,7 +222,7 @@ def affect_origin_mines_to_new(new_tiles: bytearray, x_range: tuple[int, int], y
             idx = (y * Section.LENGTH) + x
 
             tile = new_tiles[idx]
-            if tile == MINE_TILE:
+            if tile & MINE_TILE:
                 continue
 
             num = tile & NUM_MASK
@@ -250,7 +250,7 @@ def affect_new_mines_to_origin(
             idx = (y * Section.LENGTH) + x
 
             tile = origin_tiles[idx]
-            if tile == MINE_TILE:
+            if tile & MINE_TILE:
                 continue
 
             num = tile & NUM_MASK
@@ -278,7 +278,7 @@ def decrease_number_around_and_count_mines(tiles: bytearray, p: Point) -> int:
 
     def do(t: int, p: Point) -> tuple[int | None, bool]:
         nonlocal cnt
-        if t == MINE_TILE:
+        if t & MINE_TILE:
             cnt += 1
             return None, False
 
@@ -297,7 +297,7 @@ def remove_one_nearby_mine(tiles: bytearray, p: Point):
     그 주변 타일의 num은 1씩 감소한다.
     """
     def do(t: int, p: Point) -> tuple[int | None, bool]:
-        if t != MINE_TILE:
+        if not (t & MINE_TILE):
             return None, False
 
         cnt = decrease_number_around_and_count_mines(tiles=tiles, p=p)
@@ -311,7 +311,7 @@ def increase_number_around(tiles: bytearray, p: Point):
     주변 타일의 num을 1씩 증가시킨다.
     """
     def do(t: int, p: Point) -> tuple[int | None, bool]:
-        if t == MINE_TILE:
+        if t & MINE_TILE:
             return None, False
 
         t += 1
