@@ -149,7 +149,7 @@ class BoardEventHandler():
                     await asyncio.gather(*publish_coroutines)
                     return
 
-                if tile.number is None:
+                if (not tile.is_mine) and (tile.number is None):
                     # 빈 칸. 주변 칸 모두 열기.
                     start_p, end_p, tiles = BoardHandler.open_tiles_cascade(pointer)
                     tiles.hide_info()

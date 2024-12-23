@@ -216,6 +216,8 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
     @patch("event.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click(self, mock: AsyncMock):
+        # TODO: 연쇄 개방에 대한 테스트케이스 추가
+
         cursor_pos = Point(0, 0)
         pointer = Point(1, 0)
 
