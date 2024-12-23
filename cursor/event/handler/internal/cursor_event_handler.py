@@ -363,6 +363,7 @@ class CursorEventHandler:
         await asyncio.gather(*publish_coroutines)
 
     @staticmethod
+    @EventBroker.add_receiver(InteractionEvent.TILES_OPENED)
     async def receive_tiles_opened(message: Message[TilesOpenedPayload]):
         start_p = message.payload.start_p
         end_p = message.payload.end_p
