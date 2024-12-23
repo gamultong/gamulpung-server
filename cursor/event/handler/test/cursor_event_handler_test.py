@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from cursor.data import Cursor, Color
 from cursor.data.handler import CursorHandler
 from cursor.event.handler import CursorEventHandler
@@ -7,6 +8,7 @@ from message.payload import (
     NewConnEvent,
     MyCursorPayload,
     CursorsPayload,
+    CursorsDiedPayload,
     PointEvent,
     PointingPayload,
     TryPointingPayload,
@@ -179,6 +181,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
 
     @patch("event.EventBroker.publish")
     async def test_receive_new_cursor_candidate_with_cursors(self, mock: AsyncMock):
+        c_revive_at = datetime.now()
         # /docs/example/cursor-location.png
         # But B is at 0,0
         CursorHandler.cursor_dict = {
@@ -200,7 +203,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
                 width=4,
                 # color 중요.
                 color=Color.BLUE,
-                revive_at=None
+                revive_at=c_revive_at
             )
         }
 
@@ -247,7 +250,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         my_color = got.payload.color
 
         # 커서 본인에게 보내는 cursors
-        got = mock.mock_calls[1].args[0]
+        got: Message[CursorsPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # target_conns 나인지 확인
@@ -262,6 +265,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(len(got.payload.cursors), 2)
         self.assertEqual(got.payload.cursors[0].color, Color.RED)
         self.assertEqual(got.payload.cursors[1].color, Color.BLUE)
+        self.assertEqual(got.payload.cursors[1].revive_at, c_revive_at.astimezone().isoformat())
 
         # 다른 커서들에게 보내는 cursors
         got = mock.mock_calls[2].args[0]
@@ -898,6 +902,8 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
 
     @patch("event.EventBroker.publish")
     async def test_receive_single_tile_open(self, mock: AsyncMock):
+        self.cur_b.pointer = Point(1, 1)
+
         position = Point(-4, -3)
         tile = Tile.from_int(0b11000000)  # open, mine
         tile_str = Tiles(data=bytearray([tile.data])).to_str()
@@ -912,8 +918,8 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
 
         await CursorEventHandler.receive_single_tile_opened(message)
 
-        # single-tile-opened, you-died 발행 확인
-        self.assertEqual(len(mock.mock_calls), 2)
+        # single-tile-opened, you-died, cursors-died 발행 확인
+        self.assertEqual(len(mock.mock_calls), 3)
 
         # single-tile-opened
         got: Message[SingleTileOpenedPayload] = mock.mock_calls[0].args[0]
@@ -936,7 +942,6 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         got: Message[YouDiedPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
-
         # origin_event
         self.assertIn("origin_event", got.header)
         self.assertEqual(got.header["origin_event"], InteractionEvent.YOU_DIED)
@@ -947,11 +952,32 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         # payload 확인
         self.assertEqual(type(got.payload), YouDiedPayload)
 
+        revive_at = got.payload.revive_at
         from datetime import datetime
         # TODO
         # datetime.now mocking 후 test
         # self.assertEqual(got.payload.revive_at, something)
-        datetime.fromisoformat(got.payload.revive_at)
+        datetime.fromisoformat(revive_at)
+
+        # cursors-died
+        got: Message[CursorsDiedPayload] = mock.mock_calls[2].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], InteractionEvent.CURSORS_DIED)
+        # target_conns 확인, [A, B]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 2)
+        self.assertIn("A", got.header["target_conns"])
+        self.assertIn("B", got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), CursorsDiedPayload)
+        self.assertEqual(got.payload.revive_at, revive_at)
+        self.assertEqual(len(got.payload.cursors), 1)
+        self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
+
+        self.assertIsNone(self.cur_b.pointer)
 
     @patch("event.EventBroker.publish")
     async def test_receive_tiles_opened(self, mock: AsyncMock):

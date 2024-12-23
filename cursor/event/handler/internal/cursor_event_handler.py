@@ -6,10 +6,11 @@ from event import EventBroker
 from message import Message
 from datetime import datetime, timedelta
 from message.payload import (
-    NewConnPayload,
     MyCursorPayload,
     CursorsPayload,
     CursorPayload,
+    CursorReviveAtPayload,
+    CursorsDiedPayload,
     NewConnEvent,
     PointingPayload,
     TryPointingPayload,
@@ -338,7 +339,7 @@ class CursorEventHandler:
             await asyncio.gather(*publish_coroutines)
             return
 
-        # 주변 8칸 커서들 죽이기
+        # 주변 8칸 커서들 찾기
         start_p = Point(position.x - 1, position.y + 1)
         end_p = Point(position.x + 1, position.y - 1)
 
@@ -347,9 +348,7 @@ class CursorEventHandler:
             # TODO: 하드코딩 없애기
             revive_at = datetime.now() + timedelta(minutes=3)
 
-            for c in nearby_cursors:
-                c.revive_at = revive_at
-
+            # 범위 안 커서들에게 you-died
             pub_message = Message(
                 event="multicast",
                 header={
@@ -359,6 +358,29 @@ class CursorEventHandler:
                 payload=YouDiedPayload(revive_at=revive_at.astimezone().isoformat())
             )
             publish_coroutines.append(EventBroker.publish(pub_message))
+
+            # 보고있는 커서들에게 cursors-died
+            pub_message = Message(
+                event="multicast",
+                header={
+                    "target_conns": [c.conn_id for c in view_cursors],
+                    "origin_event": InteractionEvent.CURSORS_DIED
+                },
+                payload=CursorsDiedPayload(
+                    revive_at=revive_at.astimezone().isoformat(),
+                    cursors=[CursorPayload(
+                        position=cursor.position,
+                        color=cursor.color,
+                        pointer=cursor.pointer
+                    ) for cursor in nearby_cursors]
+                )
+            )
+            publish_coroutines.append(EventBroker.publish(pub_message))
+
+            # 영향 범위 커서들 죽이기
+            for c in nearby_cursors:
+                c.revive_at = revive_at
+                c.pointer = None
 
         await asyncio.gather(*publish_coroutines)
 
@@ -486,7 +508,12 @@ async def publish_new_cursors_event(target_cursors: list[Cursor], cursors: list[
         header={"target_conns": [cursor.conn_id for cursor in target_cursors],
                 "origin_event": NewConnEvent.CURSORS},
         payload=CursorsPayload(
-            cursors=[CursorPayload(cursor.position, cursor.pointer, cursor.color) for cursor in cursors]
+            cursors=[CursorReviveAtPayload(
+                cursor.position,
+                cursor.pointer,
+                cursor.color,
+                revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None
+            ) for cursor in cursors]
         )
     )
 
