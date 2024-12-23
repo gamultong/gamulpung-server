@@ -966,10 +966,9 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         # origin_event
         self.assertIn("origin_event", got.header)
         self.assertEqual(got.header["origin_event"], InteractionEvent.CURSORS_DIED)
-        # target_conns 확인, [A, B]
+        # target_conns 확인, [B]
         self.assertIn("target_conns", got.header)
-        self.assertEqual(len(got.header["target_conns"]), 2)
-        self.assertIn("A", got.header["target_conns"])
+        self.assertEqual(len(got.header["target_conns"]), 1)
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), CursorsDiedPayload)

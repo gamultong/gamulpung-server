@@ -360,10 +360,15 @@ class CursorEventHandler:
             publish_coroutines.append(EventBroker.publish(pub_message))
 
             # 보고있는 커서들에게 cursors-died
+            watcher_ids: set[str] = set()
+            for cursor in nearby_cursors:
+                temp_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.conn_id)
+                watcher_ids.update(temp_watcher_ids + [cursor.conn_id])
+
             pub_message = Message(
                 event="multicast",
                 header={
-                    "target_conns": [c.conn_id for c in view_cursors],
+                    "target_conns": [id for id in watcher_ids],
                     "origin_event": InteractionEvent.CURSORS_DIED
                 },
                 payload=CursorsDiedPayload(
