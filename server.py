@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from conn.manager import ConnectionManager
+from board.data import Section
 from board.event.handler import BoardEventHandler
 from cursor.event.handler import CursorEventHandler
 from message import Message
@@ -14,6 +15,13 @@ async def session(ws: WebSocket):
     try:
         view_width = int(ws.query_params.get("view_width"))
         view_height = int(ws.query_params.get("view_height"))
+
+        limit = Section.LENGTH * 2
+        if \
+                view_width <= 0 or view_height <= 0 or \
+                view_width > limit or view_height > limit:
+            raise Exception({"msg": "don't play with view size"})
+
     except KeyError as e:
         print(f"WebSocket connection closed: {e}")
         await ws.close(code=1000, reason="Missing required data")
