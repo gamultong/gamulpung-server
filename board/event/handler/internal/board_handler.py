@@ -1,6 +1,6 @@
 import asyncio
 from event import EventBroker
-from board.data import Point, Tile, Tiles
+from board.data import Point, Tile, Tiles, Section
 from board.data.handler import BoardHandler
 from cursor.data import Color
 from message import Message
@@ -21,7 +21,9 @@ from message.payload import (
     InteractionEvent,
     TilesOpenedPayload,
     SingleTileOpenedPayload,
-    FlagSetPayload
+    FlagSetPayload,
+    ErrorEvent,
+    ErrorPayload
 )
 
 
@@ -31,7 +33,37 @@ class BoardEventHandler():
     async def receive_fetch_tiles(message: Message[FetchTilesPayload]):
         sender = message.header["sender"]
 
-        await BoardEventHandler._publish_tiles(message.payload.start_p, message.payload.end_p, [sender])
+        start_p: Point = message.payload.start_p
+        end_p: Point = message.payload.end_p
+
+        # start_p: 좌상, end_p: 우하 확인
+        if start_p.x > end_p.x or start_p.y < end_p.y:
+            await EventBroker.publish(Message(
+                event="multicast",
+                header={
+                    "origin_event": ErrorEvent.ERROR,
+                    "target_conns": [sender]
+                },
+                payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
+            ))
+            return
+
+        # start_p와 end_p 차이 확인
+        # TODO: 일단 하드코딩으로 하는데 나중에 변경하기
+        x_gap, y_gap = (end_p.x - start_p.x + 1), (start_p.y - end_p.y + 1)
+        limit = Section.LENGTH * 2
+        if x_gap > limit or y_gap > limit:
+            await EventBroker.publish(Message(
+                event="multicast",
+                header={
+                    "origin_event": ErrorEvent.ERROR,
+                    "target_conns": [sender]
+                },
+                payload=ErrorPayload(msg=f"fetch gap should not be more than {limit}")
+            ))
+            return
+
+        await BoardEventHandler._publish_tiles(start_p, end_p, [sender])
 
     @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
     @staticmethod

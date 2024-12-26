@@ -1,6 +1,6 @@
 import asyncio
 from cursor.data import Color
-from board.data import Point, Tile, Tiles
+from board.data import Point, Tile, Tiles, Section
 from board.event.handler import BoardEventHandler
 from board.data.handler import BoardHandler
 from board.data.storage.test.fixtures import setup_board
@@ -22,7 +22,9 @@ from message.payload import (
     InteractionEvent,
     SingleTileOpenedPayload,
     TilesOpenedPayload,
-    FlagSetPayload
+    FlagSetPayload,
+    ErrorEvent,
+    ErrorPayload
 )
 
 import unittest
@@ -124,6 +126,76 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         ]))
 
         self.assertEqual(got.payload.tiles, expected.to_str())
+
+    @patch("event.EventBroker.publish")
+    async def test_fetch_tiles_receiver_malformed_start_end(self, mock: AsyncMock):
+        start_p = Point(1, 0)
+        end_p = Point(0, -1)
+
+        message = Message(
+            event=TilesEvent.FETCH_TILES,
+            header={"sender": "ayo"},
+            payload=FetchTilesPayload(
+                start_p=start_p,
+                end_p=end_p,
+            )
+        )
+
+        # trigger event
+        await BoardEventHandler.receive_fetch_tiles(message)
+
+        # 호출 여부
+        mock.assert_called_once()
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
+
+        # message 확인
+        self.assertEqual(type(got), Message)
+        # message.event
+        self.assertEqual(got.event, "multicast")
+        # message.header
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 1)
+        self.assertEqual(got.header["target_conns"][0], message.header["sender"])
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ErrorEvent.ERROR)
+
+        # message.payload
+        self.assertEqual(type(got.payload), ErrorPayload)
+
+    @patch("event.EventBroker.publish")
+    async def test_fetch_tiles_receiver_range_exceeded(self, mock: AsyncMock):
+        start_p = Point(-Section.LENGTH, 0)
+        end_p = Point(Section.LENGTH, -1)
+
+        message = Message(
+            event=TilesEvent.FETCH_TILES,
+            header={"sender": "ayo"},
+            payload=FetchTilesPayload(
+                start_p=start_p,
+                end_p=end_p,
+            )
+        )
+
+        # trigger event
+        await BoardEventHandler.receive_fetch_tiles(message)
+
+        # 호출 여부
+        mock.assert_called_once()
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
+
+        # message 확인
+        self.assertEqual(type(got), Message)
+        # message.event
+        self.assertEqual(got.event, "multicast")
+        # message.header
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 1)
+        self.assertEqual(got.header["target_conns"][0], message.header["sender"])
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ErrorEvent.ERROR)
+
+        # message.payload
+        self.assertEqual(type(got.payload), ErrorPayload)
 
     @patch("event.EventBroker.publish")
     async def test_receive_new_conn(self, mock: AsyncMock):
