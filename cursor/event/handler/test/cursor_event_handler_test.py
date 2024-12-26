@@ -1,4 +1,5 @@
 import asyncio
+from board.data import Section
 from datetime import datetime
 from cursor.data import Cursor, Color
 from cursor.data.handler import CursorHandler
@@ -1174,6 +1175,64 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
 
         b_watchers = CursorHandler.get_watchers("B")
         self.assertEqual(len(b_watchers), 0)
+
+    @patch("event.EventBroker.publish")
+    async def test_receive_set_view_size_exceed_limit(self, mock: AsyncMock):
+        message = Message(
+            event=NewConnEvent.SET_VIEW_SIZE,
+            header={"sender": self.cur_a.conn_id},
+            payload=SetViewSizePayload(
+                width=Section.LENGTH * 2 + 1,
+                height=self.cur_a.height
+            )
+        )
+
+        await CursorEventHandler.receive_set_view_size(message)
+
+        mock.assert_called_once()
+
+        # error
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ErrorEvent.ERROR)
+        # target_conns 확인, [A]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 1)
+        self.assertIn(self.cur_a.conn_id, got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), ErrorPayload)
+
+    @patch("event.EventBroker.publish")
+    async def test_receive_set_view_size_0(self, mock: AsyncMock):
+        message = Message(
+            event=NewConnEvent.SET_VIEW_SIZE,
+            header={"sender": self.cur_a.conn_id},
+            payload=SetViewSizePayload(
+                width=0,
+                height=self.cur_a.height
+            )
+        )
+
+        await CursorEventHandler.receive_set_view_size(message)
+
+        mock.assert_called_once()
+
+        # error
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ErrorEvent.ERROR)
+        # target_conns 확인, [A]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 1)
+        self.assertIn(self.cur_a.conn_id, got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), ErrorPayload)
 
     @patch("event.EventBroker.publish")
     async def test_receive_set_view_size_shrink(self, mock: AsyncMock):
