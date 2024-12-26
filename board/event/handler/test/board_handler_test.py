@@ -3,7 +3,7 @@ from cursor.data import Color
 from board.data import Point, Tile, Tiles
 from board.event.handler import BoardEventHandler
 from board.data.handler import BoardHandler
-from board.data.handler.test.fixtures import setup_board
+from board.data.storage.test.fixtures import setup_board
 from message import Message
 from message.payload import (
     FetchTilesPayload,

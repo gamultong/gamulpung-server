@@ -4,7 +4,9 @@ from tests.utils import cases
 from board.data import Point, Tile, Section
 from board.data.handler import BoardHandler
 from cursor.data import Color
-from .fixtures import setup_board
+
+from board.data.storage import SectionStorage
+from board.data.storage.test.fixtures import setup_board, teardown_board
 
 FETCH_CASE = \
     [
@@ -128,8 +130,9 @@ class BoardHandlerTestCase(unittest.TestCase):
             self.assertTrue(tile.is_open)
 
     def test_get_random_open_position_one_section_one_open(self):
-        sec = BoardHandler.sections[-1][0]
-        BoardHandler.sections = {-1: {0: sec}}
+        sec = SectionStorage.get(Point(-1, 0))
+        teardown_board()
+        SectionStorage.create(sec)
 
         for _ in range(10):
             point = BoardHandler.get_random_open_position()

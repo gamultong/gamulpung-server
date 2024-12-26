@@ -1,30 +1,28 @@
 import random
 from board.data import Point, Section, Tile, Tiles
+from board.data.storage import SectionStorage
 from cursor.data import Color
 
 
-def init_first_section() -> dict[int, dict[int, Section]]:
-    section_0_0 = Section.create(Point(0, 0))
+def init_board():
+    # 맵 초기화
+    sec_0_0 = SectionStorage.get(Point(0, 0))
+    if sec_0_0 is None:
+        section_0_0 = Section.create(Point(0, 0))
 
-    tiles = section_0_0.fetch(Point(0, 0))
+        tiles = section_0_0.fetch(Point(0, 0))
+        t = Tile.from_int(tiles.data[0])
+        t.is_open = True
 
-    t = Tile.from_int(tiles.data[0])
-    t.is_open = True
+        section_0_0.update(Tiles(data=[t.data]), Point(0, 0))
 
-    section_0_0.update(Tiles(data=[t.data]), Point(0, 0))
+        SectionStorage.create(section_0_0)
 
-    return {0: {0: section_0_0}}
+
+init_board()
 
 
 class BoardHandler:
-    # sections[y][x]
-    sections: dict[int, dict[int, Section]] = init_first_section()
-
-    # 맵의 각 끝단 섹션 위치
-    max_x: int = 0
-    min_x: int = 0
-    max_y: int = 0
-    min_y: int = 0
 
     @staticmethod
     def fetch(start: Point, end: Point) -> Tiles:
@@ -32,17 +30,18 @@ class BoardHandler:
         out_width, out_height = (end.x - start.x + 1), (start.y - end.y + 1)
         out = bytearray(out_width * out_height)
 
-        # TODO: 새로운 섹션과의 관계로 경계값이 바뀔 수 있음.
+        # 새로운 섹션과의 관계로 경계값이 바뀔 수 있음.
         # 이를 fetch 결과에 적용시킬 수 있도록 미리 다 만들어놓고 fetch를 시작해야 함.
-        # 현재는 섹션이 메모리 내부 레퍼런스로 저장되기 때문에 이렇게 미리 받아놓고 할 수 있음.
-        # 나중에는 다시 섹션을 가져와야 함.
-        sections = []
+        sec_points = []
         for sec_y in range(start.y // Section.LENGTH, end.y // Section.LENGTH - 1, - 1):
             for sec_x in range(start.x // Section.LENGTH, end.x // Section.LENGTH + 1):
-                section = BoardHandler._get_or_create_section(sec_x, sec_y)
-                sections.append(section)
+                sec_p = Point(sec_x, sec_y)
+                BoardHandler._get_or_create_section(sec_p)
+                sec_points.append(sec_p)
 
-        for section in sections:
+        for sec_p in sec_points:
+            section = BoardHandler._get_or_create_section(sec_p)
+
             inner_start = Point(
                 x=max(start.x, section.abs_x) - (section.abs_x),
                 y=min(start.y, section.abs_y + Section.LENGTH-1) - section.abs_y
@@ -81,7 +80,7 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        BoardHandler._save_section(section)
+        SectionStorage.update(section)
 
         return tile
 
@@ -103,9 +102,9 @@ class BoardHandler:
             ]
             for dx, dy in delta:
                 new_p = Point(x=sec_p.x+dx, y=sec_p.y+dy)
-                _ = BoardHandler._get_or_create_section(new_p.x, new_p.y)
+                _ = BoardHandler._get_or_create_section(new_p)
 
-            new_section = BoardHandler._get_or_create_section(sec_p.x, sec_p.y)
+            new_section = BoardHandler._get_or_create_section(sec_p)
             return new_section
 
         def get_section(p: Point) -> tuple[Section, Point]:
@@ -195,7 +194,7 @@ class BoardHandler:
 
         # 섹션 변경사항 모두 저장
         for section in sections:
-            BoardHandler._save_section(section)
+            SectionStorage.update(section)
 
         start_p = Point(min_x, max_y)
         end_p = Point(max_x, min_y)
@@ -216,7 +215,7 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        BoardHandler._save_section(section)
+        SectionStorage.update(section)
 
         return tile
 
@@ -229,7 +228,7 @@ class BoardHandler:
             y=abs_p.y // Section.LENGTH
         )
 
-        section = BoardHandler._get_or_create_section(sec_p.x, sec_p.y)
+        section = BoardHandler._get_or_create_section(sec_p)
 
         inner_p = Point(
             x=abs_p.x - section.abs_x,
@@ -237,9 +236,6 @@ class BoardHandler:
         )
 
         return section, inner_p
-
-    def _save_section(section: Section):
-        BoardHandler.sections[section.p.y][section.p.x] = section
 
     @staticmethod
     def get_random_open_position() -> Point:
@@ -250,23 +246,14 @@ class BoardHandler:
         # 이미 방문한 섹션들
         visited = set()
 
-        sec_x_range = (BoardHandler.min_x, BoardHandler.max_x)
-        sec_y_range = (BoardHandler.min_y, BoardHandler.max_y)
-
         while True:
-            rand_p = Point(
-                x=random.randint(sec_x_range[0], sec_x_range[1]),
-                y=random.randint(sec_y_range[0], sec_y_range[1])
-            )
-
+            rand_p = SectionStorage.get_random_sec_point()
             if (rand_p.x, rand_p.y) in visited:
                 continue
 
             visited.add((rand_p.x, rand_p.y))
 
-            chosen_section = BoardHandler._get_section_or_none(rand_p.x, rand_p.y)
-            if chosen_section is None:
-                continue
+            chosen_section = BoardHandler._get_section_or_none(rand_p)
 
             # 섹션 내부의 랜덤한 열린 타일 위치를 찾는다.
             inner_point = randomly_find_open_tile(chosen_section)
@@ -281,50 +268,43 @@ class BoardHandler:
             return open_point
 
     @staticmethod
-    def _get_or_create_section(x: int, y: int) -> Section:
-        if y not in BoardHandler.sections:
-            BoardHandler.max_y = max(BoardHandler.max_y, y)
-            BoardHandler.min_y = min(BoardHandler.min_y, y)
+    def _get_or_create_section(p: Point) -> Section:
+        section = BoardHandler._get_section_or_none(p)
+        if section is not None:
+            return section
 
-            BoardHandler.sections[y] = {}
+        new_section = Section.create(p)
 
-        if x not in BoardHandler.sections[y]:
-            BoardHandler.max_x = max(BoardHandler.max_x, x)
-            BoardHandler.min_x = min(BoardHandler.min_x, x)
+        # (x, y)
+        delta = [
+            (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
+            (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
+        ]
 
-            new_section = Section.create(Point(x, y))
+        # 주변 섹션과 새로운 섹션의 인접 타일을 서로 적용시킨다.
+        for dx, dy in delta:
+            np = Point(p.x+dx, p.y+dy)
+            neighbor = BoardHandler._get_section_or_none(np)
+            # 주변 섹션이 없을 수 있음.
+            if neighbor is None:
+                continue
 
-            # (x, y)
-            delta = [
-                (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
-                (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
-            ]
+            if dx != 0 and dy != 0:
+                neighbor.apply_neighbor_diagonal(new_section)
+            elif dx != 0:
+                neighbor.apply_neighbor_horizontal(new_section)
+            elif dy != 0:
+                neighbor.apply_neighbor_vertical(new_section)
 
-            # 주변 섹션과 새로운 섹션의 인접 타일을 서로 적용시킨다.
-            for dx, dy in delta:
-                nx, ny = x+dx, y+dy
-                neighbor = BoardHandler._get_section_or_none(nx, ny)
-                # 주변 섹션이 없을 수 있음.
-                if neighbor is None:
-                    continue
+            SectionStorage.update(neighbor)
 
-                if dx != 0 and dy != 0:
-                    neighbor.apply_neighbor_diagonal(new_section)
-                elif dx != 0:
-                    neighbor.apply_neighbor_horizontal(new_section)
-                elif dy != 0:
-                    neighbor.apply_neighbor_vertical(new_section)
+        SectionStorage.create(new_section)
 
-                BoardHandler.sections[ny][nx] = neighbor
-
-            BoardHandler.sections[y][x] = new_section
-
-        return BoardHandler.sections[y][x]
+        return new_section
 
     @staticmethod
-    def _get_section_or_none(x: int, y: int) -> Section | None:
-        if y in BoardHandler.sections and x in BoardHandler.sections[y]:
-            return BoardHandler.sections[y][x]
+    def _get_section_or_none(p: Point) -> Section | None:
+        return SectionStorage.get(p)
 
 
 def randomly_find_open_tile(section: Section) -> Point | None:

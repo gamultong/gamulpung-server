@@ -1,15 +1,13 @@
 from board.data import Point, Section
 from board.data.storage import SectionStorage
-from board.data.storage.internal.section_storage import env
+from .fixtures import teardown_board
 
 import unittest
 
 
 class SectionStorageTestCase(unittest.TestCase):
     def tearDown(self):
-        with env.begin(write=True) as txn:
-            db = env.open_db()
-            txn.drop(db)
+        teardown_board()
 
     def test_create(self):
         sec = Section.create(Point(0, 0))
@@ -41,3 +39,11 @@ class SectionStorageTestCase(unittest.TestCase):
         updated = SectionStorage.get(sec.p)
         self.assertIsNotNone(updated)
         self.assertEqual(updated.data[0], 0b11111111)
+
+    def test_get_random_sec_point(self):
+        sec = Section.create(Point(0, 0))
+        SectionStorage.create(sec)
+
+        p = SectionStorage.get_random_sec_point()
+
+        self.assertEqual(p, sec.p)
