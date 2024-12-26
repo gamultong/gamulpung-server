@@ -1,8 +1,9 @@
 from board.data import Point, Section
 import lmdb
 import random
+from config import BOARD_DATABASE_PATH
 
-env = lmdb.Environment(path="./database", max_dbs=1)
+env = lmdb.Environment(path=BOARD_DATABASE_PATH)
 
 
 class SectionStorage:
