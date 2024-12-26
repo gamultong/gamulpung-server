@@ -30,41 +30,33 @@ class BoardHandler:
         out_width, out_height = (end.x - start.x + 1), (start.y - end.y + 1)
         out = bytearray(out_width * out_height)
 
-        # 새로운 섹션과의 관계로 경계값이 바뀔 수 있음.
-        # 이를 fetch 결과에 적용시킬 수 있도록 미리 다 만들어놓고 fetch를 시작해야 함.
-        sec_points = []
         for sec_y in range(start.y // Section.LENGTH, end.y // Section.LENGTH - 1, - 1):
             for sec_x in range(start.x // Section.LENGTH, end.x // Section.LENGTH + 1):
-                sec_p = Point(sec_x, sec_y)
-                BoardHandler._get_or_create_section(sec_p)
-                sec_points.append(sec_p)
+                section = BoardHandler._get_or_create_section(Point(sec_x, sec_y))
 
-        for sec_p in sec_points:
-            section = BoardHandler._get_or_create_section(sec_p)
+                inner_start = Point(
+                    x=max(start.x, section.abs_x) - (section.abs_x),
+                    y=min(start.y, section.abs_y + Section.LENGTH-1) - section.abs_y
+                )
+                inner_end = Point(
+                    x=min(end.x, section.abs_x + Section.LENGTH-1) - section.abs_x,
+                    y=max(end.y, section.abs_y) - section.abs_y
+                )
 
-            inner_start = Point(
-                x=max(start.x, section.abs_x) - (section.abs_x),
-                y=min(start.y, section.abs_y + Section.LENGTH-1) - section.abs_y
-            )
-            inner_end = Point(
-                x=min(end.x, section.abs_x + Section.LENGTH-1) - section.abs_x,
-                y=max(end.y, section.abs_y) - section.abs_y
-            )
+                fetched = section.fetch(start=inner_start, end=inner_end)
 
-            fetched = section.fetch(start=inner_start, end=inner_end)
+                x_gap, y_gap = (inner_end.x - inner_start.x + 1), (inner_start.y - inner_end.y + 1)
 
-            x_gap, y_gap = (inner_end.x - inner_start.x + 1), (inner_start.y - inner_end.y + 1)
+                # start로부터 떨어진 거리
+                out_x = (section.abs_x + inner_start.x) - start.x
+                out_y = start.y - (section.abs_y + inner_start.y)
 
-            # start로부터 떨어진 거리
-            out_x = (section.abs_x + inner_start.x) - start.x
-            out_y = start.y - (section.abs_y + inner_start.y)
+                for row_num in range(y_gap):
+                    out_idx = (out_width * (out_y + row_num)) + out_x
+                    data_idx = row_num * x_gap
 
-            for row_num in range(y_gap):
-                out_idx = (out_width * (out_y + row_num)) + out_x
-                data_idx = row_num * x_gap
-
-                data = fetched.data[data_idx:data_idx+x_gap]
-                out[out_idx:out_idx+x_gap] = data
+                    data = fetched.data[data_idx:data_idx+x_gap]
+                    out[out_idx:out_idx+x_gap] = data
 
         return Tiles(data=out)
 
@@ -94,19 +86,6 @@ class BoardHandler:
         # 탐색하며 발견한 섹션들
         sections: list[Section] = []
 
-        def fetch_section(sec_p: Point) -> Section:
-            # 가져오는 데이터의 일관성을 위해 주변 섹션을 미리 만들어놓기
-            delta = [
-                (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
-                (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
-            ]
-            for dx, dy in delta:
-                new_p = Point(x=sec_p.x+dx, y=sec_p.y+dy)
-                _ = BoardHandler._get_or_create_section(new_p)
-
-            new_section = BoardHandler._get_or_create_section(sec_p)
-            return new_section
-
         def get_section(p: Point) -> tuple[Section, Point]:
             sec_p = Point(
                 x=p.x // Section.LENGTH,
@@ -122,7 +101,7 @@ class BoardHandler:
 
             # 새로 가져오기
             if section is None:
-                section = fetch_section(sec_p)
+                section = BoardHandler._get_or_create_section(sec_p)
                 sections.append(section)
 
             inner_p = Point(
@@ -269,11 +248,17 @@ class BoardHandler:
 
     @staticmethod
     def _get_or_create_section(p: Point) -> Section:
+        """
+        p에 해당하는 섹션을 가져온다. 만약 섹션이 존재하지 않으면 새로 만든다.
+        완전한(주변 섹션과의 관계가 모두 적용된) 섹션을 반환한다.
+        """
         section = BoardHandler._get_section_or_none(p)
-        if section is not None:
-            return section
 
-        new_section = Section.create(p)
+        is_complete_section = True
+
+        if section is None:
+            is_complete_section = False
+            section = Section.create(p)
 
         # (x, y)
         delta = [
@@ -285,22 +270,27 @@ class BoardHandler:
         for dx, dy in delta:
             np = Point(p.x+dx, p.y+dy)
             neighbor = BoardHandler._get_section_or_none(np)
-            # 주변 섹션이 없을 수 있음.
-            if neighbor is None:
+            if neighbor is not None:
                 continue
 
+            # 주변 섹션이 존재하지 않으면 새로 생성 및 section에 적용.
+            neighbor = Section.create(np)
+            is_complete_section = False
+
             if dx != 0 and dy != 0:
-                neighbor.apply_neighbor_diagonal(new_section)
+                section.apply_neighbor_diagonal(neighbor)
             elif dx != 0:
-                neighbor.apply_neighbor_horizontal(new_section)
+                section.apply_neighbor_horizontal(neighbor)
             elif dy != 0:
-                neighbor.apply_neighbor_vertical(new_section)
+                section.apply_neighbor_vertical(neighbor)
 
             SectionStorage.set(neighbor)
 
-        SectionStorage.set(new_section)
+        # 모서리 적용이 안 되어 있었다면 적용된 버전의 섹션을 저장
+        if not is_complete_section:
+            SectionStorage.set(section)
 
-        return new_section
+        return section
 
     @staticmethod
     def _get_section_or_none(p: Point) -> Section | None:

@@ -39,7 +39,15 @@ class BoardHandlerTestCase(unittest.TestCase):
         setup_board()
 
     @cases(FETCH_CASE)
-    def test_fetch(self, data, expect):
+    @patch("board.data.Section.create")
+    def test_fetch(self, mock: MagicMock, data, expect):
+        def stub_section_create(p: Point) -> Section:
+            return Section(
+                data=bytearray([0b00000000 for _ in range(Section.LENGTH ** 2)]),
+                p=p
+            )
+        mock.side_effect = stub_section_create
+
         start_p = data["start_p"]
         end_p = data["end_p"]
 
@@ -72,7 +80,7 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         start_p, end_p, tiles = BoardHandler.open_tiles_cascade(p)
 
-        self.assertEqual(len(create_seciton_mock.mock_calls), 20)
+        self.assertEqual(len(create_seciton_mock.mock_calls), 21)
 
         self.assertEqual(start_p, Point(-1, 3))
         self.assertEqual(end_p, Point(3, -1))
