@@ -9,6 +9,7 @@ if __name__ == "__main__":
 
     # board
     from board.data.test import *
+    from board.data.storage.test import *
     from board.data.handler.test import *
     from board.event.handler.test import *
 
