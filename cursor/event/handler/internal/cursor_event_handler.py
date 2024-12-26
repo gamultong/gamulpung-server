@@ -418,17 +418,18 @@ class CursorEventHandler:
 
         CursorHandler.remove_cursor(cursor.conn_id)
 
-        message = Message(
-            event="multicast",
-            header={"target_conns": watchers,
-                    "origin_event": NewConnEvent.CURSOR_QUIT},
-            payload=CursorQuitPayload(
-                position=cursor.position,
-                pointer=cursor.pointer,
-                color=cursor.color
+        if len(watchers) > 0:
+            message = Message(
+                event="multicast",
+                header={"target_conns": watchers,
+                        "origin_event": NewConnEvent.CURSOR_QUIT},
+                payload=CursorQuitPayload(
+                    position=cursor.position,
+                    pointer=cursor.pointer,
+                    color=cursor.color
+                )
             )
-        )
-        await EventBroker.publish(message)
+            await EventBroker.publish(message)
 
     @EventBroker.add_receiver(NewConnEvent.SET_VIEW_SIZE)
     @staticmethod
