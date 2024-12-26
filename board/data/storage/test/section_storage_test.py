@@ -9,10 +9,10 @@ class SectionStorageTestCase(unittest.TestCase):
     def tearDown(self):
         teardown_board()
 
-    def test_create(self):
+    def test_set_create(self):
         sec = Section.create(Point(0, 0))
 
-        SectionStorage.create(sec)
+        SectionStorage.set(sec)
 
     def test_get_not_exits(self):
         section = SectionStorage.get(Point(0, 0))
@@ -20,7 +20,7 @@ class SectionStorageTestCase(unittest.TestCase):
 
     def test_get(self):
         sec = Section.create(Point(1, -1))
-        SectionStorage.create(sec)
+        SectionStorage.set(sec)
 
         got = SectionStorage.get(sec.p)
         self.assertIsNotNone(got)
@@ -28,13 +28,13 @@ class SectionStorageTestCase(unittest.TestCase):
         self.assertEqual(got.p, sec.p)
         self.assertEqual(got.data, sec.data)
 
-    def test_update(self):
+    def test_set_update(self):
         sec = Section.create(Point(0, 0))
-        SectionStorage.create(sec)
+        SectionStorage.set(sec)
 
         sec.data[0] = 0b11111111
 
-        SectionStorage.update(sec)
+        SectionStorage.set(sec)
 
         updated = SectionStorage.get(sec.p)
         self.assertIsNotNone(updated)
@@ -42,7 +42,7 @@ class SectionStorageTestCase(unittest.TestCase):
 
     def test_get_random_sec_point(self):
         sec = Section.create(Point(0, 0))
-        SectionStorage.create(sec)
+        SectionStorage.set(sec)
 
         p = SectionStorage.get_random_sec_point()
 

@@ -16,7 +16,7 @@ def init_board():
 
         section_0_0.update(Tiles(data=[t.data]), Point(0, 0))
 
-        SectionStorage.create(section_0_0)
+        SectionStorage.set(section_0_0)
 
 
 init_board()
@@ -80,7 +80,7 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        SectionStorage.update(section)
+        SectionStorage.set(section)
 
         return tile
 
@@ -194,7 +194,7 @@ class BoardHandler:
 
         # 섹션 변경사항 모두 저장
         for section in sections:
-            SectionStorage.update(section)
+            SectionStorage.set(section)
 
         start_p = Point(min_x, max_y)
         end_p = Point(max_x, min_y)
@@ -215,7 +215,7 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        SectionStorage.update(section)
+        SectionStorage.set(section)
 
         return tile
 
@@ -296,9 +296,9 @@ class BoardHandler:
             elif dy != 0:
                 neighbor.apply_neighbor_vertical(new_section)
 
-            SectionStorage.update(neighbor)
+            SectionStorage.set(neighbor)
 
-        SectionStorage.create(new_section)
+        SectionStorage.set(new_section)
 
         return new_section
 

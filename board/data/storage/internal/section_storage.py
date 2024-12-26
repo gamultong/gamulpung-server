@@ -28,14 +28,8 @@ class SectionStorage:
 
             return None
 
-    def create(section: Section):
+    def set(section: Section):
         with env.begin(write=True) as tx:
             p_key = section.p.marshal_bytes()
 
-            tx.put(key=p_key, value=section.data, overwrite=False)
-
-    def update(section: Section):
-        with env.begin(write=True) as tx:
-            p_key = section.p.marshal_bytes()
-
-            tx.put(key=p_key, value=section.data, overwrite=True)
+            tx.put(key=p_key, value=section.data)

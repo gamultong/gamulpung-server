@@ -132,7 +132,7 @@ class BoardHandlerTestCase(unittest.TestCase):
     def test_get_random_open_position_one_section_one_open(self):
         sec = SectionStorage.get(Point(-1, 0))
         teardown_board()
-        SectionStorage.create(sec)
+        SectionStorage.set(sec)
 
         for _ in range(10):
             point = BoardHandler.get_random_open_position()

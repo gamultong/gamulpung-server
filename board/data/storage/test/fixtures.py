@@ -39,7 +39,7 @@ def setup_board():
     ]
 
     for section in sections:
-        SectionStorage.create(section)
+        SectionStorage.set(section)
 
 
 def teardown_board():
