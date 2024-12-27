@@ -34,6 +34,7 @@ from message.payload import (
     ErrorPayload,
     NewCursorCandidatePayload
 )
+from config import MINE_KILL_DURATION_SECONDS
 
 
 class CursorEventHandler:
@@ -345,8 +346,7 @@ class CursorEventHandler:
 
         nearby_cursors = CursorHandler.exists_range(start=start_p, end=end_p)
         if len(nearby_cursors) > 0:
-            # TODO: 하드코딩 없애기
-            revive_at = datetime.now() + timedelta(minutes=3)
+            revive_at = datetime.now() + timedelta(seconds=MINE_KILL_DURATION_SECONDS)
 
             # 범위 안 커서들에게 you-died
             pub_message = Message(

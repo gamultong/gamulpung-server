@@ -4,7 +4,9 @@ from tests.utils import cases
 from board.data import Point, Tile, Section
 from board.data.handler import BoardHandler
 from cursor.data import Color
-from .fixtures import setup_board
+
+from board.data.storage import SectionStorage
+from board.data.storage.test.fixtures import setup_board, teardown_board
 
 FETCH_CASE = \
     [
@@ -37,7 +39,15 @@ class BoardHandlerTestCase(unittest.TestCase):
         setup_board()
 
     @cases(FETCH_CASE)
-    def test_fetch(self, data, expect):
+    @patch("board.data.Section.create")
+    def test_fetch(self, mock: MagicMock, data, expect):
+        def stub_section_create(p: Point) -> Section:
+            return Section(
+                data=bytearray([0b00000000 for _ in range(Section.LENGTH ** 2)]),
+                p=p
+            )
+        mock.side_effect = stub_section_create
+
         start_p = data["start_p"]
         end_p = data["end_p"]
 
@@ -70,7 +80,7 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         start_p, end_p, tiles = BoardHandler.open_tiles_cascade(p)
 
-        self.assertEqual(len(create_seciton_mock.mock_calls), 20)
+        self.assertEqual(len(create_seciton_mock.mock_calls), 21)
 
         self.assertEqual(start_p, Point(-1, 3))
         self.assertEqual(end_p, Point(3, -1))
@@ -128,8 +138,9 @@ class BoardHandlerTestCase(unittest.TestCase):
             self.assertTrue(tile.is_open)
 
     def test_get_random_open_position_one_section_one_open(self):
-        sec = BoardHandler.sections[-1][0]
-        BoardHandler.sections = {-1: {0: sec}}
+        sec = SectionStorage.get(Point(-1, 0))
+        teardown_board()
+        SectionStorage.set(sec)
 
         for _ in range(10):
             point = BoardHandler.get_random_open_position()
