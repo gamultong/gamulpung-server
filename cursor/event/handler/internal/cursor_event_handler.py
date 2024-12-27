@@ -1,7 +1,7 @@
 import asyncio
 from cursor.data import Cursor
 from cursor.data.handler import CursorHandler
-from board.data import Point, Tile, Tiles
+from board.data import Point, Tile, Tiles, Section
 from event import EventBroker
 from message import Message
 from datetime import datetime, timedelta
@@ -34,7 +34,7 @@ from message.payload import (
     ErrorPayload,
     NewCursorCandidatePayload
 )
-from config import MINE_KILL_DURATION_SECONDS
+from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT
 
 
 class CursorEventHandler:
@@ -469,6 +469,20 @@ class CursorEventHandler:
 
         if new_width == cursor.width and new_height == cursor.height:
             # 변동 없음
+            return
+
+        if \
+                new_width <= 0 or new_height <= 0 or \
+                new_width > VIEW_SIZE_LIMIT or new_height > VIEW_SIZE_LIMIT:
+            # 뷰 범위 한계 넘음
+            await EventBroker.publish(Message(
+                event="multicast",
+                header={
+                    "origin_event": ErrorEvent.ERROR,
+                    "target_conns": [sender]
+                },
+                payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
+            ))
             return
 
         cur_watching = CursorHandler.get_watching(cursor_id=cursor.conn_id)
