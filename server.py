@@ -37,7 +37,7 @@ async def session(ws: WebSocket):
             # 연결 종료됨
             break
         except Exception as e:
-            msg = e
+            msg = e.__repr__()
             if hasattr(e, "msg"):
                 msg = e.msg
 
