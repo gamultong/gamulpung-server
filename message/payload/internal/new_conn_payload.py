@@ -39,8 +39,13 @@ class CursorPayload(Payload):
 
 
 @dataclass
+class CursorReviveAtPayload(CursorPayload):
+    revive_at: str | None
+
+
+@dataclass
 class CursorsPayload(Payload):
-    cursors: list[CursorPayload]
+    cursors: list[CursorReviveAtPayload]
 
 
 class MyCursorPayload(CursorPayload):
