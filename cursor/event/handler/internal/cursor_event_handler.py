@@ -34,7 +34,7 @@ from message.payload import (
     ErrorPayload,
     NewCursorCandidatePayload
 )
-from config import MINE_KILL_DURATION_SECONDS
+from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT
 
 
 class CursorEventHandler:
@@ -471,11 +471,9 @@ class CursorEventHandler:
             # 변동 없음
             return
 
-        # TODO: 하드코딩 없애기
-        limit = Section.LENGTH * 2
         if \
                 new_width <= 0 or new_height <= 0 or \
-                new_width > limit or new_height > limit:
+                new_width > VIEW_SIZE_LIMIT or new_height > VIEW_SIZE_LIMIT:
             # 뷰 범위 한계 넘음
             await EventBroker.publish(Message(
                 event="multicast",
@@ -483,7 +481,7 @@ class CursorEventHandler:
                     "origin_event": ErrorEvent.ERROR,
                     "target_conns": [sender]
                 },
-                payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {limit}")
+                payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
             ))
             return
 

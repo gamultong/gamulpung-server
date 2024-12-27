@@ -25,6 +25,7 @@ from message.payload import (
     ErrorEvent,
     ErrorPayload
 )
+from config import VIEW_SIZE_LIMIT
 
 
 class BoardEventHandler():
@@ -49,17 +50,15 @@ class BoardEventHandler():
             return
 
         # start_p와 end_p 차이 확인
-        # TODO: 일단 하드코딩으로 하는데 나중에 변경하기
         x_gap, y_gap = (end_p.x - start_p.x + 1), (start_p.y - end_p.y + 1)
-        limit = Section.LENGTH * 2
-        if x_gap > limit or y_gap > limit:
+        if x_gap > VIEW_SIZE_LIMIT or y_gap > VIEW_SIZE_LIMIT:
             await EventBroker.publish(Message(
                 event="multicast",
                 header={
                     "origin_event": ErrorEvent.ERROR,
                     "target_conns": [sender]
                 },
-                payload=ErrorPayload(msg=f"fetch gap should not be more than {limit}")
+                payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
             ))
             return
 

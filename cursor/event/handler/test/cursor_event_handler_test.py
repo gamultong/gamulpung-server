@@ -37,6 +37,7 @@ from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
 from board.data import Point, Tile, Tiles
+from config import VIEW_SIZE_LIMIT
 
 """
 CursorEventHandler Test
@@ -1182,7 +1183,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
             event=NewConnEvent.SET_VIEW_SIZE,
             header={"sender": self.cur_a.conn_id},
             payload=SetViewSizePayload(
-                width=Section.LENGTH * 2 + 1,
+                width=VIEW_SIZE_LIMIT + 1,
                 height=self.cur_a.height
             )
         )

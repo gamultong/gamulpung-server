@@ -26,6 +26,7 @@ from message.payload import (
     ErrorEvent,
     ErrorPayload
 )
+from config import VIEW_SIZE_LIMIT
 
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -164,8 +165,8 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
 
     @patch("event.EventBroker.publish")
     async def test_fetch_tiles_receiver_range_exceeded(self, mock: AsyncMock):
-        start_p = Point(-Section.LENGTH, 0)
-        end_p = Point(Section.LENGTH, -1)
+        start_p = Point((-VIEW_SIZE_LIMIT/2) // 1, 0)
+        end_p = Point((VIEW_SIZE_LIMIT/2) // 1, -1)
 
         message = Message(
             event=TilesEvent.FETCH_TILES,
