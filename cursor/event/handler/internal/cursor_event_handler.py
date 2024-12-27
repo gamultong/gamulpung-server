@@ -245,8 +245,8 @@ class CursorEventHandler:
 
         if len(original_watchings) > 0:
             # 범위 벗어난 커서들 연관관계 해제
-            for watching in original_watchings:
-                in_view = cursor.check_in_view(watching.position)
+            for other_cursor in original_watchings:
+                in_view = cursor.check_in_view(other_cursor.position)
                 if not in_view:
                     CursorHandler.remove_watcher(watcher=cursor, watching=other_cursor)
 
@@ -290,10 +290,10 @@ class CursorEventHandler:
             publish_coroutines.append(EventBroker.publish(message))
 
             # 범위 벗어나면 watcher 제거
-            for watcher in original_watchers:
-                in_view = watcher.check_in_view(cursor.position)
+            for other_cursor in original_watchers:
+                in_view = other_cursor.check_in_view(cursor.position)
                 if not in_view:
-                    CursorHandler.remove_watcher(watcher=watcher, watching=cursor)
+                    CursorHandler.remove_watcher(watcher=other_cursor, watching=cursor)
 
         new_watchers = list(filter(lambda c: c.conn_id not in original_watcher_ids, watchers_new_pos))
         if len(new_watchers) > 0:
@@ -390,6 +390,7 @@ class CursorEventHandler:
         await asyncio.gather(*publish_coroutines)
 
     @staticmethod
+    @EventBroker.add_receiver(InteractionEvent.TILES_OPENED)
     async def receive_tiles_opened(message: Message[TilesOpenedPayload]):
         start_p = message.payload.start_p
         end_p = message.payload.end_p

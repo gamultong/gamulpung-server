@@ -849,6 +849,33 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertIn("A", c_watchings)
         self.assertIn("B", c_watchings)
 
+    @patch("event.EventBroker.publish")
+    async def test_receive_movable_result_b_down(self, mock: AsyncMock):
+        """
+        B가 한 칸 아래로 이동.
+        B의 뷰에서 A가 사라진다.
+        """
+        original_position = self.cur_c.position
+        message = Message(
+            event=MoveEvent.MOVABLE_RESULT,
+            header={"receiver": self.cur_b.conn_id},
+            payload=MovableResultPayload(
+                movable=True,
+                position=Point(
+                    x=self.cur_b.position.x,
+                    y=self.cur_b.position.y - 1,
+                )
+            )
+        )
+
+        await CursorEventHandler.receive_movable_result(message)
+
+        mock.assert_not_called()
+
+        # watcher 관계 확인
+        c_watchings = CursorHandler.get_watching("C")
+        self.assertEqual(len(c_watchings), 0)
+
 
 class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
