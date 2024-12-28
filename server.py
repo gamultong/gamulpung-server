@@ -37,14 +37,12 @@ async def session(ws: WebSocket):
             # 연결 종료됨
             break
         except Exception as e:
-            msg = e.__str__()
-
             await conn.send(Message(
                 event=ErrorEvent.ERROR,
-                payload=ErrorPayload(msg=msg)
+                payload=ErrorPayload(msg=e)
             ))
 
-            print(f"Unhandled error while handling message: \n{message.__dict__}\n{type(e)}: '{msg}'")
+            print(f"Unhandled error while handling message: \n{message.__dict__}\n{type(e)}: '{e}'")
             break
 
     await ConnectionManager.close(conn)
