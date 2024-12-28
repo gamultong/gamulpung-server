@@ -73,7 +73,7 @@ class BoardEventHandler():
         height = message.payload.height
 
         # 커서의 위치
-        position = BoardHandler.get_random_open_position()
+        position = await BoardHandler.get_random_open_position()
 
         start_p = Point(
             x=position.x - width,
@@ -101,7 +101,7 @@ class BoardEventHandler():
 
     @staticmethod
     async def _publish_tiles(start: Point, end: Point, to: list[str]):
-        tiles = BoardHandler.fetch(start, end)
+        tiles = await BoardHandler.fetch(start, end)
         tiles.hide_info()
 
         pub_message = Message(
@@ -124,7 +124,7 @@ class BoardEventHandler():
 
         pointer = message.payload.new_pointer
 
-        tiles = BoardHandler.fetch(
+        tiles = await BoardHandler.fetch(
             Point(pointer.x-1, pointer.y+1),
             Point(pointer.x+1, pointer.y-1)
         )
@@ -182,7 +182,7 @@ class BoardEventHandler():
 
                 if (not tile.is_mine) and (tile.number is None):
                     # 빈 칸. 주변 칸 모두 열기.
-                    start_p, end_p, tiles = BoardHandler.open_tiles_cascade(pointer)
+                    start_p, end_p, tiles = await BoardHandler.open_tiles_cascade(pointer)
                     tiles.hide_info()
                     tile_str = tiles.to_str()
 
@@ -196,7 +196,7 @@ class BoardEventHandler():
                     )
                     publish_coroutines.append(EventBroker.publish(pub_message))
                 else:
-                    tile = BoardHandler.open_tile(pointer)
+                    tile = await BoardHandler.open_tile(pointer)
 
                     tile_str = Tiles(data=bytearray([tile.data])).to_str()
 
@@ -214,7 +214,7 @@ class BoardEventHandler():
                 flag_state = not tile.is_flag
                 color = message.payload.color if flag_state else None
 
-                _ = BoardHandler.set_flag_state(p=pointer, state=flag_state, color=color)
+                _ = await BoardHandler.set_flag_state(p=pointer, state=flag_state, color=color)
 
                 pub_message = Message(
                     event=InteractionEvent.FLAG_SET,
@@ -235,7 +235,7 @@ class BoardEventHandler():
 
         position = message.payload.position
 
-        tiles = BoardHandler.fetch(start=position, end=position)
+        tiles = await BoardHandler.fetch(start=position, end=position)
         tile = Tile.from_int(tiles.data[0])
 
         movable = tile.is_open

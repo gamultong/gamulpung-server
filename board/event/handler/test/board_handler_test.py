@@ -56,8 +56,8 @@ Test
 
 # fetch-tiles-receiver Test
 class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        setup_board()
+    async def asyncSetUp(self):
+        await setup_board()
 
     @patch("event.EventBroker.publish")
     async def test_fetch_tiles_receiver_normal_case(self, mock: AsyncMock):
@@ -224,7 +224,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         self.assertEqual(got.payload.height, height)
 
         position = got.payload.position
-        tiles = BoardHandler.fetch(position, position)
+        tiles = await BoardHandler.fetch(position, position)
         tile = Tile.from_int(tiles.data[0])
         self.assertTrue(tile.is_open)
 
@@ -242,15 +242,15 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         self.assertEqual(got.payload.end_p, Point(position.x+width, position.y-height))
 
         # 하는 김에 마스킹까지 같이 테스트
-        expected = BoardHandler.fetch(got.payload.start_p, got.payload.end_p)
+        expected = await BoardHandler.fetch(got.payload.start_p, got.payload.end_p)
         expected.hide_info()
 
         self.assertEqual(got.payload.tiles, expected.to_str())
 
 
 class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        setup_board()
+    async def asyncSetUp(self):
+        await setup_board()
         self.sender_id = "ayo"
 
     @patch("event.EventBroker.publish")
@@ -338,7 +338,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             color=None,
             number=1
         )
-        tiles = BoardHandler.fetch(start=pointer, end=pointer)
+        tiles = await BoardHandler.fetch(start=pointer, end=pointer)
         fetched_tile = Tile.from_int(tiles.data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
@@ -460,7 +460,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             number=1
         )
 
-        fetched_tile = Tile.from_int(BoardHandler.fetch(start=pointer, end=pointer).data[0])
+        fetched_tile = Tile.from_int((await BoardHandler.fetch(start=pointer, end=pointer)).data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
 
@@ -517,7 +517,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             number=None
         )
 
-        fetched_tile = Tile.from_int(BoardHandler.fetch(start=pointer, end=pointer).data[0])
+        fetched_tile = Tile.from_int((await BoardHandler.fetch(start=pointer, end=pointer)).data[0])
 
         self.assertEqual(fetched_tile, expected_tile)
 

@@ -14,9 +14,9 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 
-class ServerTestCase(unittest.TestCase):
-    def setUp(self):
-        setup_board()
+class ServerTestCase(unittest.IsolatedAsyncioTestCase):
+    async def setUp(self):
+        await setup_board()
         self.client = TestClient(app)
 
     def tearDown(self):

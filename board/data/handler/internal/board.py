@@ -1,12 +1,13 @@
+import asyncio
 import random
 from board.data import Point, Section, Tile, Tiles
 from board.data.storage import SectionStorage
 from cursor.data import Color
 
 
-def init_board():
+async def init_board():
     # 맵 초기화
-    sec_0_0 = SectionStorage.get(Point(0, 0))
+    sec_0_0 = await SectionStorage.get(Point(0, 0))
     if sec_0_0 is None:
         section_0_0 = Section.create(Point(0, 0))
 
@@ -16,23 +17,23 @@ def init_board():
 
         section_0_0.update(Tiles(data=[t.data]), Point(0, 0))
 
-        SectionStorage.set(section_0_0)
+        await SectionStorage.set(section_0_0)
 
 
-init_board()
+asyncio.run(init_board())
 
 
 class BoardHandler:
 
     @staticmethod
-    def fetch(start: Point, end: Point) -> Tiles:
+    async def fetch(start: Point, end: Point) -> Tiles:
         # 반환할 데이터 공간 미리 할당
         out_width, out_height = (end.x - start.x + 1), (start.y - end.y + 1)
         out = bytearray(out_width * out_height)
 
         for sec_y in range(start.y // Section.LENGTH, end.y // Section.LENGTH - 1, - 1):
             for sec_x in range(start.x // Section.LENGTH, end.x // Section.LENGTH + 1):
-                section = BoardHandler._get_or_create_section(Point(sec_x, sec_y))
+                section = await BoardHandler._get_or_create_section(Point(sec_x, sec_y))
 
                 inner_start = Point(
                     x=max(start.x, section.abs_x) - (section.abs_x),
@@ -61,8 +62,8 @@ class BoardHandler:
         return Tiles(data=out)
 
     @staticmethod
-    def open_tile(p: Point) -> Tile:
-        section, inner_p = BoardHandler._get_section_from_abs_point(p)
+    async def open_tile(p: Point) -> Tile:
+        section, inner_p = await BoardHandler._get_section_from_abs_point(p)
 
         tiles = section.fetch(inner_p)
 
@@ -72,12 +73,12 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        SectionStorage.set(section)
+        await BoardHandler._set_section(section)
 
         return tile
 
     @staticmethod
-    def open_tiles_cascade(p: Point) -> tuple[Point, Point, Tiles]:
+    async def open_tiles_cascade(p: Point) -> tuple[Point, Point, Tiles]:
         """
         지정된 타일부터 주변 타일들을 연쇄적으로 개방한다.
         빈칸들과 빈칸과 인접한숫자 타일까지 개방하며, 섹션 가장자리 데이터가 새로운 섹션으로 인해 중간에 수정되는 것을 방지하기 위해
@@ -86,7 +87,7 @@ class BoardHandler:
         # 탐색하며 발견한 섹션들
         sections: list[Section] = []
 
-        def get_section(p: Point) -> tuple[Section, Point]:
+        async def get_section(p: Point) -> tuple[Section, Point]:
             sec_p = Point(
                 x=p.x // Section.LENGTH,
                 y=p.y // Section.LENGTH
@@ -101,7 +102,7 @@ class BoardHandler:
 
             # 새로 가져오기
             if section is None:
-                section = BoardHandler._get_or_create_section(sec_p)
+                section = await BoardHandler._get_or_create_section(sec_p)
                 sections.append(section)
 
             inner_p = Point(
@@ -128,7 +129,7 @@ class BoardHandler:
             min_x, min_y = min(min_x, p.x), min(min_y, p.y)
             max_x, max_y = max(max_x, p.x), max(max_y, p.y)
 
-            sec, inner_p = get_section(p)
+            sec, inner_p = await get_section(p)
 
             # TODO: section.fetch_one(point) 같은거 만들어야 할 듯
             tile = Tile.from_int(sec.fetch(inner_p).data[0])
@@ -160,7 +161,7 @@ class BoardHandler:
                     continue
                 visited.add((np.x, np.y))
 
-                sec, inner_p = get_section(np)
+                sec, inner_p = await get_section(np)
 
                 nearby_tile = Tile.from_int(sec.fetch(inner_p).data[0])
                 if nearby_tile.is_open:
@@ -172,18 +173,17 @@ class BoardHandler:
             queue.extend(temp_list)
 
         # 섹션 변경사항 모두 저장
-        for section in sections:
-            SectionStorage.set(section)
+        await asyncio.gather(*[BoardHandler._set_section(section) for section in sections])
 
         start_p = Point(min_x, max_y)
         end_p = Point(max_x, min_y)
-        tiles = BoardHandler.fetch(start_p, end_p)
+        tiles = await BoardHandler.fetch(start_p, end_p)
 
         return start_p, end_p, tiles
 
     @staticmethod
-    def set_flag_state(p: Point, state: bool, color: Color | None = None) -> Tile:
-        section, inner_p = BoardHandler._get_section_from_abs_point(p)
+    async def set_flag_state(p: Point, state: bool, color: Color | None = None) -> Tile:
+        section, inner_p = await BoardHandler._get_section_from_abs_point(p)
 
         tiles = section.fetch(inner_p)
 
@@ -194,11 +194,11 @@ class BoardHandler:
         tiles.data[0] = tile.data
 
         section.update(data=tiles, start=inner_p)
-        SectionStorage.set(section)
+        await BoardHandler._set_section(section)
 
         return tile
 
-    def _get_section_from_abs_point(abs_p: Point) -> tuple[Section, Point]:
+    async def _get_section_from_abs_point(abs_p: Point) -> tuple[Section, Point]:
         """
         절대 좌표 abs_p를 포함하는 섹션, 그리고 abs_p의 섹션 내부 좌표를 반환한다.
         """
@@ -207,7 +207,7 @@ class BoardHandler:
             y=abs_p.y // Section.LENGTH
         )
 
-        section = BoardHandler._get_or_create_section(sec_p)
+        section = await BoardHandler._get_or_create_section(sec_p)
 
         inner_p = Point(
             x=abs_p.x - section.abs_x,
@@ -217,7 +217,7 @@ class BoardHandler:
         return section, inner_p
 
     @staticmethod
-    def get_random_open_position() -> Point:
+    async def get_random_open_position() -> Point:
         """
         전체 맵에서 랜덤한 열린 타일 위치를 하나 찾는다.
         섹션이 하나 이상 존재해야한다.
@@ -226,13 +226,13 @@ class BoardHandler:
         visited = set()
 
         while True:
-            rand_p = SectionStorage.get_random_sec_point()
+            rand_p = await SectionStorage.get_random_sec_point()
             if (rand_p.x, rand_p.y) in visited:
                 continue
 
             visited.add((rand_p.x, rand_p.y))
 
-            chosen_section = BoardHandler._get_section_or_none(rand_p)
+            chosen_section = await BoardHandler._get_section_or_none(rand_p)
 
             # 섹션 내부의 랜덤한 열린 타일 위치를 찾는다.
             inner_point = randomly_find_open_tile(chosen_section)
@@ -247,12 +247,12 @@ class BoardHandler:
             return open_point
 
     @staticmethod
-    def _get_or_create_section(p: Point) -> Section:
+    async def _get_or_create_section(p: Point) -> Section:
         """
         p에 해당하는 섹션을 가져온다. 만약 섹션이 존재하지 않으면 새로 만든다.
         완전한(주변 섹션과의 관계가 모두 적용된) 섹션을 반환한다.
         """
-        section = BoardHandler._get_section_or_none(p)
+        section = await BoardHandler._get_section_or_none(p)
 
         is_complete_section = True
 
@@ -266,10 +266,12 @@ class BoardHandler:
             (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
         ]
 
+        save_section_coroutines = []
+
         # 주변 섹션과 새로운 섹션의 인접 타일을 서로 적용시킨다.
         for dx, dy in delta:
             np = Point(p.x+dx, p.y+dy)
-            neighbor = BoardHandler._get_section_or_none(np)
+            neighbor = await BoardHandler._get_section_or_none(np)
             if neighbor is not None:
                 continue
 
@@ -284,17 +286,23 @@ class BoardHandler:
             elif dy != 0:
                 section.apply_neighbor_vertical(neighbor)
 
-            SectionStorage.set(neighbor)
+            save_section_coroutines.append(BoardHandler._set_section(neighbor))
 
         # 모서리 적용이 안 되어 있었다면 적용된 버전의 섹션을 저장
         if not is_complete_section:
-            SectionStorage.set(section)
+            save_section_coroutines.append(BoardHandler._set_section(section))
+
+        await asyncio.gather(*save_section_coroutines)
 
         return section
 
     @staticmethod
-    def _get_section_or_none(p: Point) -> Section | None:
-        return SectionStorage.get(p)
+    async def _get_section_or_none(p: Point) -> Section | None:
+        return await SectionStorage.get(p)
+
+    @staticmethod
+    async def _set_section(sec: Section):
+        await SectionStorage.set(sec)
 
 
 def randomly_find_open_tile(section: Section) -> Point | None:
