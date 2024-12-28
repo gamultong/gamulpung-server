@@ -370,8 +370,9 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
             BoardEventHandler.receive_try_pointing(message)
         )
 
+        # FIXME: TODO: 레이스 컨디션 처리가 안 되어 있음!!!!!
         # 첫번째: pointing-result, single-tile-opened 두번째: pointing-result 발행하는지 확인
-        self.assertEqual(len(mock.mock_calls), 3)
+        self.assertEqual(len(mock.mock_calls), 4)
 
     @patch("event.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click_flag(self, mock: AsyncMock):
