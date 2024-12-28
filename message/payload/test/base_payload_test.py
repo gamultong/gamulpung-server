@@ -27,7 +27,7 @@ class BasePayloadTestCase(unittest.TestCase):
         with self.assertRaises(exp) as cm:
             payload._from_dict(dict=dict)
 
-        self.assertEqual(cm.exception.msg, msg)
+        self.assertEqual(cm.exception.__str__(), msg)
 
 
 if __name__ == "__main__":

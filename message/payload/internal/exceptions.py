@@ -3,8 +3,7 @@ class InvalidFieldException(Exception):
         self.key = key
         self.value = value
 
-    @property
-    def msg(self):
+    def __str__(self):
         return f"invaild field: {self.get_key()} -> {self.get_value()}"
 
     def get_key(self):
@@ -23,8 +22,7 @@ class MissingFieldException(Exception):
         self.key = key
         self.value = value
 
-    @property
-    def msg(self):
+    def __str__(self):
         return f"missing {len(tuple(self.get_keys()))} keys: {", ".join(self.get_keys())}"
 
     def get_keys(self):
@@ -34,4 +32,5 @@ class MissingFieldException(Exception):
 
 
 class DumbHumanException(Exception):
-    msg: str = "worng use. what have you done"
+    def __str__(self):
+        return "worng use. what have you done"

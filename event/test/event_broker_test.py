@@ -65,7 +65,7 @@ class EventBrokerTestCase(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(NoMatchingReceiverException) as cm:
             await EventBroker.publish(message=message)
-        self.assertEqual(cm.exception.msg, "no matching receiver for 'invaild_event'")
+        self.assertEqual(cm.exception.__str__(), "no matching receiver for 'invaild_event'")
 
 
 if __name__ == "__main__":
