@@ -64,7 +64,7 @@ class MessageTestCase(unittest.TestCase):
         with self.assertRaises(InvalidEventTypeException) as cm:
             Message.from_str(socket_msg)
 
-        self.assertEqual(cm.exception.msg, "invalid event type: 'ayo invalid'")
+        self.assertEqual(cm.exception.__str__(), "invalid event type: 'ayo invalid'")
 
 
 if __name__ == "__main__":

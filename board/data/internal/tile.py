@@ -58,17 +58,6 @@ class Tile:
         """
         __init__ 대신 이걸 쓰기를 권장.
         """
-        if number and (number >= 8 or number < 0):
-            raise InvalidTileException
-        if is_mine and number:
-            raise InvalidTileException
-        if is_open and is_flag:
-            raise InvalidTileException
-        if is_flag and (color is None):
-            raise InvalidTileException
-        if (not is_flag) and (color is not None):
-            raise InvalidTileException
-
         t = Tile(
             is_open=is_open,
             is_mine=is_mine,
@@ -76,6 +65,23 @@ class Tile:
             color=color,
             number=number
         )
+
+        if (t.number is not None) and (t.number >= 8 or t.number < 0):
+            # 숫자는 음수이거나 8 이상일 수 없음
+            raise InvalidTileException(t.__dict__)
+        if t.is_mine and (t.number is not None):
+            # 지뢰 타일은 숫자를 가지고있지 않음
+            raise InvalidTileException(t.__dict__)
+        if is_open and is_flag:
+            # 열려있는 타일은 깃발이 꽂혀있을 수 없음
+            raise InvalidTileException(t.__dict__)
+        if is_flag and (color is None):
+            # 색깔 없이 깃발이 꽂혀있을 수 없음
+            raise InvalidTileException(t.__dict__)
+        if (not is_flag) and (color is not None):
+            # 깃발이 없는 채로 색깔이 존재할 수 없음
+            raise InvalidTileException(t.__dict__)
+
         return t
 
     @staticmethod
@@ -87,9 +93,6 @@ class Tile:
         color = extract_color(b) if is_flag else None
         number = extract_number(b) if not is_mine else None
 
-        if is_open and is_flag:
-            raise InvalidTileException()
-
         t = Tile(
             is_open=is_open,
             is_mine=is_mine,
@@ -97,6 +100,11 @@ class Tile:
             color=color,
             number=number
         )
+
+        if t.is_open and t.is_flag:
+            # 열려있는 타일은 깃발이 꽂혀있을 수 없음
+            raise InvalidTileException(t.__dict__)
+
         return t
 
 
