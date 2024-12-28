@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, patch
 
 
 class ServerTestCase(unittest.IsolatedAsyncioTestCase):
-    async def setUp(self):
+    async def asyncSetUp(self):
         await setup_board()
         self.client = TestClient(app)
 
@@ -69,4 +69,9 @@ class ServerTestCase(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    try:
+        unittest.main()
+    finally:
+        from db import db
+        import asyncio
+        asyncio.run(db.close())
