@@ -20,8 +20,7 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
                 pointer=None,
                 height=6,
                 width=6,
-                color=Color.BLUE,
-                revive_at=None
+                color=Color.BLUE
             ),
             "B": Cursor(
                 conn_id="B",
@@ -29,8 +28,7 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
                 pointer=None,
                 height=7,
                 width=7,
-                color=Color.BLUE,
-                revive_at=None
+                color=Color.BLUE
             ),
             "C": Cursor(
                 conn_id="C",
@@ -38,8 +36,7 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
                 pointer=None,
                 height=4,
                 width=4,
-                color=Color.BLUE,
-                revive_at=None
+                color=Color.BLUE
             )
         }
 

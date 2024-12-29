@@ -16,8 +16,7 @@ def setup_cursor_locations() -> tuple[Cursor]:
             pointer=None,
             height=6,
             width=6,
-            color=Color.YELLOW,
-            revive_at=None
+            color=Color.YELLOW
         ),
         "B": Cursor(
             conn_id="B",
@@ -25,8 +24,7 @@ def setup_cursor_locations() -> tuple[Cursor]:
             pointer=None,
             height=7,
             width=7,
-            color=Color.BLUE,
-            revive_at=None
+            color=Color.BLUE
         ),
         "C": Cursor(
             conn_id="C",
@@ -34,8 +32,7 @@ def setup_cursor_locations() -> tuple[Cursor]:
             pointer=None,
             height=4,
             width=4,
-            color=Color.PURPLE,
-            revive_at=None
+            color=Color.PURPLE
         )
     }
 
