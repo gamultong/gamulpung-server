@@ -5,6 +5,9 @@ from message import Message
 from .exceptions import NoMatchingReceiverException
 from message.internal.message import EVENT_TYPE
 from uuid import uuid4
+from datetime import datetime
+
+from .event_recorder import EventRecorder
 
 
 class Receiver(Generic[EVENT_TYPE]):
@@ -74,12 +77,10 @@ class EventBroker:
 
     @staticmethod
     async def publish(message: Message):
-        EventBroker._debug(message)
-
         if message.event not in EventBroker.event_dict:
             raise NoMatchingReceiverException(message.event)
 
-        coroutines = []
+        coroutines = [EventRecorder.record(timestamp=datetime.now(), msg=message)]
 
         receiver_ids = EventBroker.event_dict[message.event]
         for id in receiver_ids:
@@ -87,6 +88,3 @@ class EventBroker:
             coroutines.append(receiver(message))
 
         await asyncio.gather(*coroutines)
-
-    def _debug(message: Message):
-        print(message.to_str(del_header=False))

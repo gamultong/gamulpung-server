@@ -4,10 +4,11 @@ from fastapi.websockets import WebSocketDisconnect
 from server import app
 from message import Message
 from message.payload import FetchTilesPayload, TilesPayload, TilesEvent, NewConnEvent
-from board.data.storage.test.fixtures import setup_board
+from board.data.storage.test.fixtures import setup_board, teardown_board
 from board.event.handler import BoardEventHandler
 from board.data import Point, Tile, Tiles
 from event import EventBroker
+from event.test.utils import clear_records
 from conn.manager import ConnectionManager
 
 import unittest
@@ -19,7 +20,9 @@ class ServerTestCase(unittest.IsolatedAsyncioTestCase):
         await setup_board()
         self.client = TestClient(app)
 
-    def tearDown(self):
+    async def asyncTearDown(self):
+        await teardown_board()
+        await clear_records()
         self.client.params = {}
         self.client.close()
 
