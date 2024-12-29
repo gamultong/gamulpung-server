@@ -183,7 +183,6 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
 
     @patch("event.EventBroker.publish")
     async def test_receive_new_cursor_candidate_with_cursors(self, mock: AsyncMock):
-        c_revive_at = datetime.now()
         # /docs/example/cursor-location.png
         # But B is at 0,0
         CursorHandler.cursor_dict = {
@@ -195,7 +194,6 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
                 width=6,
                 # color 중요. 이따 비교에 써야 함.
                 color=Color.RED,
-                revive_at=None
             ),
             "C": Cursor(
                 conn_id="C",
@@ -205,9 +203,15 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
                 width=4,
                 # color 중요.
                 color=Color.BLUE,
-                revive_at=c_revive_at
             )
         }
+        # 지남. cursors에서 안 보여야 함.
+        a_revive_at = datetime(year=1000, month=1, day=1)
+        CursorHandler.cursor_dict["A"].revive_at = a_revive_at
+
+        # 안 지남. cursors에서 보여야 함.
+        c_revive_at = datetime(year=2200, month=1, day=1)
+        CursorHandler.cursor_dict["C"].revive_at = c_revive_at
 
         original_cursors_len = 2
         original_cursors = [c.conn_id for c in list(CursorHandler.cursor_dict.values())]
@@ -266,6 +270,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 2)
         self.assertEqual(got.payload.cursors[0].color, Color.RED)
+        self.assertIsNone(got.payload.cursors[0].revive_at)
         self.assertEqual(got.payload.cursors[1].color, Color.BLUE)
         self.assertEqual(got.payload.cursors[1].revive_at, c_revive_at.astimezone().isoformat())
 

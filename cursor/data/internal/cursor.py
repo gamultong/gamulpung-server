@@ -12,7 +12,18 @@ class Cursor:
     color: Color
     width: int
     height: int
-    revive_at: datetime | None
+    _revive_at: datetime | None = None
+
+    @property
+    def revive_at(self) -> datetime | None:
+        if (self._revive_at is not None) and (self._revive_at <= datetime.now()):
+            self._revive_at = None
+
+        return self._revive_at
+
+    @revive_at.setter
+    def revive_at(self, v: datetime) -> None:
+        self._revive_at = v
 
     def set_size(self, width: int, height: int):
         self.width = width
@@ -47,6 +58,5 @@ class Cursor:
             pointer=None,
             color=Color.get_random(),
             width=0,
-            height=0,
-            revive_at=None
+            height=0
         )

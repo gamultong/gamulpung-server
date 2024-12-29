@@ -109,9 +109,7 @@ class CursorEventHandler:
 
         # 커서 부활시간 확인
         if cursor.revive_at is not None:
-            if cursor.revive_at >= datetime.now():
-                return
-            cursor.revive_at = None
+            return
 
         # 뷰 바운더리 안에서 포인팅하는지 확인
         if not cursor.check_in_view(new_pointer):

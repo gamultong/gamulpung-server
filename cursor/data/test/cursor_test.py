@@ -1,5 +1,6 @@
 from board.data import Point
 from cursor.data import Cursor, Color
+from datetime import datetime, timedelta
 import unittest
 
 
@@ -15,6 +16,22 @@ class CursorTestCase(unittest.TestCase):
         self.assertIn(cursor.color, Color)
         self.assertEqual(cursor.width, 0)
         self.assertEqual(cursor.height, 0)
+
+    def test_cursor_revive_at(self):
+        conn_id = "some id"
+        cursor = Cursor.create(conn_id)
+
+        self.assertIsNone(cursor.revive_at)
+
+        # revive_at이 지나지 않음
+        hour_later = datetime.now() + timedelta(hours=1)
+        cursor.revive_at = hour_later
+        self.assertEqual(cursor.revive_at, hour_later)
+
+        # revive_at이 지남
+        hour_earlier = datetime.now() - timedelta(hours=1)
+        cursor.revive_at = hour_earlier
+        self.assertIsNone(cursor.revive_at)
 
     def test_check_interactable(self):
         # 0, 0
@@ -46,8 +63,7 @@ class CursorTestCase(unittest.TestCase):
             pointer=None,
             height=6,
             width=6,
-            color=Color.BLUE,
-            revive_at=None
+            color=Color.BLUE
         )
         cur_b = Cursor(
             conn_id="B",
@@ -55,8 +71,7 @@ class CursorTestCase(unittest.TestCase):
             pointer=None,
             height=7,
             width=7,
-            color=Color.BLUE,
-            revive_at=None
+            color=Color.BLUE
         )
         cur_c = Cursor(
             conn_id="C",
@@ -64,8 +79,7 @@ class CursorTestCase(unittest.TestCase):
             pointer=None,
             height=4,
             width=4,
-            color=Color.BLUE,
-            revive_at=None
+            color=Color.BLUE
         )
 
         self.assertTrue(cur_a.check_in_view(cur_c.position))
