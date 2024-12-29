@@ -1,8 +1,9 @@
 import unittest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 
 from message import Message
 from event import EventBroker, Receiver, NoMatchingReceiverException
+from .utils import clear_records
 
 
 class EventBrokerTestCase(unittest.IsolatedAsyncioTestCase):
@@ -19,7 +20,8 @@ class EventBrokerTestCase(unittest.IsolatedAsyncioTestCase):
         self.handler.receive_a = self.func_receive_a
         self.handler.receive_b = self.func_receive_b
 
-    def tearDown(self):
+    async def asyncTearDown(self):
+        await clear_records()
         EventBroker.remove_receiver(self.handler.receive_a)
         EventBroker.remove_receiver(self.handler.receive_b)
 
@@ -36,7 +38,8 @@ class EventBrokerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(self.handler.receive_a.id, Receiver.receiver_dict)
         self.assertNotIn("example_a", EventBroker.event_dict)
 
-    async def test_publish(self):
+    @patch("event.EventRecorder.record")
+    async def test_publish(self, mock: AsyncMock):
         message = Message(event="example_a", payload=None)
 
         await EventBroker.publish(message=message)
@@ -45,7 +48,8 @@ class EventBrokerTestCase(unittest.IsolatedAsyncioTestCase):
         mock_message = self.handler.receive_a.func.mock_calls[0].args[0]
         self.assertEqual(mock_message.event, message.event)
 
-    async def test_multiple_receiver_publish(self):
+    @patch("event.EventRecorder.record")
+    async def test_multiple_receiver_publish(self, mock: AsyncMock):
         message_b = Message(event="example_b", payload=None)
         await EventBroker.publish(message=message_b)
 
