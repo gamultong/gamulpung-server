@@ -22,4 +22,9 @@ if __name__ == "__main__":
     from cursor.data.handler.test import *
     from cursor.event.handler.test import *
 
-    unittest.main()
+    try:
+        unittest.main()
+    finally:
+        import asyncio
+        from db import db
+        asyncio.run(db.close())

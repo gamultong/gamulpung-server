@@ -1,13 +1,14 @@
 from board.data import Section, Point
-from board.data.storage.internal.section_storage import env
 from board.data.storage import SectionStorage
 
+from db import db
 
-def setup_board():
+
+async def setup_board():
     """
     /docs/example-map-state.png
     """
-    teardown_board()
+    await teardown_board()
 
     Section.LENGTH = 4
 
@@ -39,10 +40,8 @@ def setup_board():
     ]
 
     for section in sections:
-        SectionStorage.set(section)
+        await SectionStorage.set(section)
 
 
-def teardown_board():
-    with env.begin(write=True) as txn:
-        db = env.open_db()
-        txn.drop(db)
+async def teardown_board():
+    await db.execute("DELETE FROM sections")

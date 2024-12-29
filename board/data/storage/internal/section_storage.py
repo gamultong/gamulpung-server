@@ -1,36 +1,60 @@
 from board.data import Point, Section
-import lmdb
-import random
-from config import BOARD_DATABASE_PATH
+import asyncio
+from db import db
 
-env = lmdb.Environment(path=BOARD_DATABASE_PATH)
+TABLE_NAME = "sections"
+
+
+async def init_table():
+    await db.execute(f"""
+    CREATE TABLE IF NOT EXISTS {TABLE_NAME}(
+        x INT NOT NULL,
+        y INT NOT NULL,
+        data BLOB NOT NULL
+    )""")
+
+    await db.execute(f"""
+    CREATE UNIQUE INDEX IF NOT EXISTS x_y_idx ON {TABLE_NAME}(
+        x, y
+    )""")
+
+asyncio.run(init_table())
 
 
 class SectionStorage:
-    def get_random_sec_point() -> Point:
+    async def get_random_sec_point() -> Point:
         """
         주의: 한개 이상의 섹션이 존재해야 함
-        TODO: 전체 key를 불러오고 있음.
         """
-        with env.begin() as tx:
-            with tx.cursor() as cursor:
-                keys = list(cursor.iternext(keys=True, values=False))
-                rand_key = random.choice(keys)
+        row = None
+        cur = await db.execute(f"SELECT x, y FROM {TABLE_NAME} ORDER BY RANDOM() LIMIT 1")
+        row = await cur.fetchone()
 
-                return Point.unmarshal_bytes(rand_key)
+        return Point(x=row[0], y=row[1])
 
-    def get(p: Point) -> Section | None:
-        with env.begin() as tx:
-            p_key = p.marshal_bytes()
+    async def get(p: Point) -> Section | None:
+        row = None
+        cur = await db.execute(
+            f"SELECT data FROM {TABLE_NAME} WHERE x=:x AND y=:y",
+            {"x": p.x, "y": p.y}
+        )
+        row = await cur.fetchone()
 
-            data = tx.get(p_key)
-            if data is not None:
-                return Section(p=p, data=bytearray(data))
-
+        if row is None:
             return None
 
-    def set(section: Section):
-        with env.begin(write=True) as tx:
-            p_key = section.p.marshal_bytes()
+        return Section(p=p, data=bytearray(row[0]))
 
-            tx.put(key=p_key, value=section.data)
+    async def set(section: Section):
+        await db.execute(
+            f"""
+            INSERT INTO {TABLE_NAME}(x, y, data)
+            VALUES (:x, :y, :data)
+            ON CONFLICT(x, y) DO UPDATE SET data = :data
+            """,
+            {
+                "x": section.p.x,
+                "y": section.p.y,
+                "data": section.data
+            }
+        )

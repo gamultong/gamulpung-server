@@ -2,3 +2,5 @@
 t.py
 *.pyc
 __pycache__/
+
+gamulpung.db

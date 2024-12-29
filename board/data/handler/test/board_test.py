@@ -34,13 +34,13 @@ FETCH_CASE = \
     ]
 
 
-class BoardHandlerTestCase(unittest.TestCase):
-    def setUp(self):
-        setup_board()
+class BoardHandlerTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        await setup_board()
 
     @cases(FETCH_CASE)
     @patch("board.data.Section.create")
-    def test_fetch(self, mock: MagicMock, data, expect):
+    async def test_fetch(self, mock: MagicMock, data, expect):
         def stub_section_create(p: Point) -> Section:
             return Section(
                 data=bytearray([0b00000000 for _ in range(Section.LENGTH ** 2)]),
@@ -51,24 +51,24 @@ class BoardHandlerTestCase(unittest.TestCase):
         start_p = data["start_p"]
         end_p = data["end_p"]
 
-        tiles = BoardHandler.fetch(start_p, end_p)
+        tiles = await BoardHandler.fetch(start_p, end_p)
         data = tiles.to_str()
 
         self.assertEqual(data,  expect)
 
-    def test_open_tile(self):
+    async def test_open_tile(self):
         p = Point(0, -2)
 
-        result = BoardHandler.open_tile(p)
+        result = await BoardHandler.open_tile(p)
 
-        tiles = BoardHandler.fetch(start=p, end=p)
+        tiles = await BoardHandler.fetch(start=p, end=p)
         tile = Tile.from_int(tiles.data[0])
 
         self.assertTrue(tile.is_open)
         self.assertEqual(tile, result)
 
     @patch("board.data.Section.create")
-    def test_open_tiles_cascade(self, create_seciton_mock: MagicMock):
+    async def test_open_tiles_cascade(self, create_seciton_mock: MagicMock):
         def stub_section_create(p: Point) -> Section:
             return Section(
                 data=bytearray([0b10000000 for _ in range(Section.LENGTH ** 2)]),
@@ -78,13 +78,13 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         p = Point(0, 3)
 
-        start_p, end_p, tiles = BoardHandler.open_tiles_cascade(p)
+        start_p, end_p, tiles = await BoardHandler.open_tiles_cascade(p)
 
         self.assertEqual(len(create_seciton_mock.mock_calls), 21)
 
         self.assertEqual(start_p, Point(-1, 3))
         self.assertEqual(end_p, Point(3, -1))
-        self.assertEqual(tiles, BoardHandler.fetch(start=start_p, end=end_p))
+        self.assertEqual(tiles, await BoardHandler.fetch(start=start_p, end=end_p))
 
         OPEN_0 = 0b10000000
         OPEN_1 = 0b10000001
@@ -101,13 +101,13 @@ class BoardHandlerTestCase(unittest.TestCase):
         ])
         self.assertEqual(tiles.data, expected)
 
-    def test_set_flag_state_true(self):
+    async def test_set_flag_state_true(self):
         p = Point(0, -2)
         color = Color.BLUE
 
-        result = BoardHandler.set_flag_state(p=p, state=True, color=color)
+        result = await BoardHandler.set_flag_state(p=p, state=True, color=color)
 
-        tiles = BoardHandler.fetch(start=p, end=p)
+        tiles = await BoardHandler.fetch(start=p, end=p)
         tile = Tile.from_int(tiles.data[0])
 
         self.assertTrue(tile.is_flag)
@@ -115,12 +115,12 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         self.assertEqual(tile, result)
 
-    def test_set_flag_state_false(self):
+    async def test_set_flag_state_false(self):
         p = Point(1, -1)
 
-        result = BoardHandler.set_flag_state(p=p, state=False)
+        result = await BoardHandler.set_flag_state(p=p, state=False)
 
-        tiles = BoardHandler.fetch(start=p, end=p)
+        tiles = await BoardHandler.fetch(start=p, end=p)
         tile = Tile.from_int(tiles.data[0])
 
         self.assertFalse(tile.is_flag)
@@ -128,24 +128,24 @@ class BoardHandlerTestCase(unittest.TestCase):
 
         self.assertEqual(tile, result)
 
-    def test_get_random_open_position(self):
+    async def test_get_random_open_position(self):
         for _ in range(10):
-            point = BoardHandler.get_random_open_position()
+            point = await BoardHandler.get_random_open_position()
 
-            tiles = BoardHandler.fetch(point, point)
+            tiles = await BoardHandler.fetch(point, point)
             tile = Tile.from_int(tiles.data[0])
 
             self.assertTrue(tile.is_open)
 
-    def test_get_random_open_position_one_section_one_open(self):
-        sec = SectionStorage.get(Point(-1, 0))
-        teardown_board()
-        SectionStorage.set(sec)
+    async def test_get_random_open_position_one_section_one_open(self):
+        sec = await SectionStorage.get(Point(-1, 0))
+        await teardown_board()
+        await SectionStorage.set(sec)
 
         for _ in range(10):
-            point = BoardHandler.get_random_open_position()
+            point = await BoardHandler.get_random_open_position()
 
-            tiles = BoardHandler.fetch(point, point)
+            tiles = await BoardHandler.fetch(point, point)
             tile = Tile.from_int(tiles.data[0])
 
             self.assertTrue(tile.is_open)

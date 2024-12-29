@@ -14,9 +14,9 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 
-class ServerTestCase(unittest.TestCase):
-    def setUp(self):
-        setup_board()
+class ServerTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        await setup_board()
         self.client = TestClient(app)
 
     def tearDown(self):
@@ -69,4 +69,9 @@ class ServerTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    try:
+        unittest.main()
+    finally:
+        from db import db
+        import asyncio
+        asyncio.run(db.close())
