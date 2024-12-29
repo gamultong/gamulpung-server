@@ -5,10 +5,14 @@ from unittest.mock import AsyncMock, patch
 from conn import Conn
 from conn.manager import ConnectionManager
 from message import Message
-from message.payload import TilesPayload, NewConnEvent, NewConnPayload, ConnClosedPayload
+from message.payload import (
+    TilesPayload, NewConnEvent, NewConnPayload, ConnClosedPayload
+)
 from event import EventBroker
 from conn.test.fixtures import create_connection_mock
 from board.data import Point
+
+import asyncio
 
 
 class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
@@ -20,6 +24,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self):
         ConnectionManager.conns = {}
+        ConnectionManager.limiter.storage.reset()
 
     @patch("event.EventBroker.publish")
     async def test_add(self, mock: AsyncMock):
@@ -145,18 +150,17 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected.to_str(), got1)
         self.assertEqual(expected.to_str(), got2)
 
-    async def test_handle_message(self):
+    async def test_publish_client_event(self):
         mock = AsyncMock()
         EventBroker.add_receiver("example")(mock)
 
         conn_id = "haha this is some random conn id"
-        message = Message(event="example",
-                          header={"sender": conn_id},
-                          payload=TilesPayload(
-                              Point(0, 0), Point(0, 0), "abcdefg"
-                          ))
+        message = Message(
+            event="example",
+            payload=TilesPayload(Point(0, 0), Point(0, 0), "abcdefg")
+        )
 
-        await ConnectionManager.handle_message(message=message)
+        await ConnectionManager.publish_client_event(conn_id=conn_id, msg=message)
 
         mock.assert_called_once()
 
@@ -164,6 +168,32 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(got.header["sender"], conn_id)
         self.assertEqual(got.to_str(), message.to_str())
+
+    @patch("event.EventBroker.publish")
+    async def test_publish_client_event_rate_limit_exceeded(self, mock: AsyncMock):
+        conn = await ConnectionManager.add(conn=self.con1, width=1, height=1)
+
+        limit = ConnectionManager.rate_limit.amount
+        wait_seconds = ConnectionManager.rate_limit.get_expiry()
+
+        async def send_msg():
+            msg = Message(event="example", payload=None)
+            await ConnectionManager.publish_client_event(conn_id=conn.id, msg=msg)
+
+        # limit 꽉 채우기
+        await asyncio.gather(*[send_msg() for _ in range(limit)])
+        self.con1.send_text.assert_not_called()
+
+        # 꽉 찬 후에는 불가능
+        await send_msg()
+        self.con1.send_text.assert_called_once()  # 에러 이벤트 발행
+        self.con1.send_text.reset_mock()
+
+        # 시간이 지난 후에는 다시 가능
+        self.con1.send_text.reset_mock()
+        await asyncio.sleep(wait_seconds)
+        await send_msg()
+        self.con1.send_text.assert_not_called()
 
 
 if __name__ == "__main__":
