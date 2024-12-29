@@ -2,9 +2,14 @@ import asyncio
 from fastapi.websockets import WebSocket
 from conn import Conn
 from message import Message
-from message.payload import NewConnEvent, NewConnPayload, ConnClosedPayload, DumbHumanException
+from message.payload import (
+    NewConnEvent, NewConnPayload, ConnClosedPayload, DumbHumanException, ErrorEvent, ErrorPayload
+)
 from event import EventBroker
 from uuid import uuid4
+
+from config import MESSAGE_RATE_LIMIT
+from limits import storage, strategies, parse
 
 
 def overwrite_event(msg: Message):
@@ -17,6 +22,8 @@ def overwrite_event(msg: Message):
 
 class ConnectionManager:
     conns: dict[str, Conn] = {}
+    limiter = strategies.FixedWindowRateLimiter(storage.MemoryStorage())
+    rate_limit = parse(MESSAGE_RATE_LIMIT)
 
     @staticmethod
     def get_conn(id: str):
@@ -94,5 +101,27 @@ class ConnectionManager:
         await asyncio.gather(*coroutines)
 
     @staticmethod
-    async def handle_message(message: Message):
-        await EventBroker.publish(message)
+    async def publish_client_event(conn_id: str, msg: Message):
+        # 커넥션 rate limit 확인
+        ok = ConnectionManager._check_rate_limit(conn_id)
+
+        if not ok:
+            conn = ConnectionManager.get_conn(conn_id)
+            await conn.send(msg=create_rate_limit_exceeded_message())
+            return
+
+        msg.header = {"sender": conn_id}
+        await EventBroker.publish(msg)
+
+    @staticmethod
+    def _check_rate_limit(conn_id: str) -> bool:
+        limit = ConnectionManager.rate_limit
+        ok = ConnectionManager.limiter.hit(limit, conn_id)
+        return ok
+
+
+def create_rate_limit_exceeded_message() -> Message:
+    return Message(
+        event=ErrorEvent.ERROR,
+        payload=ErrorPayload(msg=f"rate limit exceeded. limit: {MESSAGE_RATE_LIMIT}")
+    )

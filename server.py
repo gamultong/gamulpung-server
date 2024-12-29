@@ -38,9 +38,8 @@ async def session(ws: WebSocket):
 
     while True:
         try:
-            message = await conn.receive()
-            message.header = {"sender": conn.id}
-            await ConnectionManager.handle_message(message)
+            msg = await conn.receive()
+            await ConnectionManager.publish_client_event(conn_id=conn.id, msg=msg)
         except (WebSocketDisconnect, ConnectionClosed) as e:
             # 연결 종료됨
             break
@@ -50,7 +49,7 @@ async def session(ws: WebSocket):
                 payload=ErrorPayload(msg=e)
             ))
 
-            print(f"Unhandled error while handling message: \n{message.__dict__}\n{type(e)}: '{e}'")
+            print(f"Unhandled error while handling message: \n{msg.__dict__}\n{type(e)}: '{e}'")
             break
 
     await ConnectionManager.close(conn)
