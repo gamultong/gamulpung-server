@@ -13,8 +13,9 @@ class Section:
     LENGTH = 100
     MINE_RATIO = 0.3
 
-    def __init__(self, p: Point, data: bytearray):
+    def __init__(self, p: Point, data: bytearray, applied_flag: int = 0):
         self.p = p
+        self.applied_flag = applied_flag
         self.data = data
 
     def fetch(self, start: Point, end: Point | None = None) -> Tiles:

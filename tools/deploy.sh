@@ -31,9 +31,9 @@ then
   sudo docker rmi $IMAGE_NAME
 fi
 
-sudo docker run -it -d 
+sudo docker run -it -d \
   -p 80:8000 \
   -v ".:$VOLUME_MOUNT_PATH" \
   --env-file $ENV_FILE_PATH \
-  --name $CONTAINER_NAME \ 
+  --name $CONTAINER_NAME \
   $IMAGE_NAME

@@ -59,8 +59,9 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
     async def asyncSetUp(self):
         await setup_board()
 
+    @patch("board.data.Section.create")
     @patch("event.EventBroker.publish")
-    async def test_fetch_tiles_receiver_normal_case(self, mock: AsyncMock):
+    async def test_fetch_tiles_receiver_normal_case(self, mock: AsyncMock, create_mock):
         """
         fetch-tiles-receiver
         normal-case
@@ -83,6 +84,13 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
                 fetch-tiles의 대한 응답
         ----------------------------
         """
+
+        def stub_section_create(p: Point) -> Section:
+            return Section(
+                data=bytearray([0b00000000 for _ in range(Section.LENGTH ** 2)]),
+                p=p
+            )
+        create_mock.side_effect = stub_section_create
 
         start_p = Point(-1, 0)
         end_p = Point(0, -1)

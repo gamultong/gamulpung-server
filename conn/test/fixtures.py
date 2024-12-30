@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, AsyncMock
 
-from fastapi.websockets import WebSocket
+from fastapi.websockets import WebSocket, WebSocketState
 
 
 class ConnMock():
@@ -9,6 +9,7 @@ class ConnMock():
         self.receive_text = AsyncMock()
         self.send_text = AsyncMock()
         self.close = AsyncMock()
+        self.application_state = WebSocketState.CONNECTED
 
 
 def create_connection_mock() -> ConnMock:
