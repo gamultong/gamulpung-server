@@ -1,4 +1,4 @@
-from fastapi.websockets import WebSocket, WebSocketState
+from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from message import Message
 from dataclasses import dataclass
@@ -23,11 +23,11 @@ class Conn:
         return Message.from_str(await self.conn.receive_text())
 
     async def send(self, msg: Message):
-        if self.conn.client_state == WebSocketState.DISCONNECTED:
+        if self.conn.application_state == WebSocketState.DISCONNECTED:
             return
 
         try:
             await self.conn.send_text(msg.to_str())
-        except ConnectionClosed:
+        except (ConnectionClosed, WebSocketDisconnect):
             # 커넥션이 종료되었는데도 타이밍 문제로 인해 커넥션을 가져왔을 수 있음.
             return
