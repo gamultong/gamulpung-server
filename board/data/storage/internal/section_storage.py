@@ -45,6 +45,21 @@ class SectionStorage:
 
         return Section(p=p, data=bytearray(row[0]))
 
+    async def get_all() -> list[Section] | None:
+        row = None
+        cur = await db.execute(
+            f"SELECT x, y, data FROM {TABLE_NAME}",
+        )
+        row = await cur.fetchall()
+
+        if row is None:
+            return None
+
+        return [
+            Section(p=Point(x, y), data=bytearray(data))
+            for x, y, data in row
+        ]
+
     async def set(section: Section):
         await db.execute(
             f"""

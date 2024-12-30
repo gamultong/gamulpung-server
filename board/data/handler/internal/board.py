@@ -297,6 +297,18 @@ class BoardHandler:
         return section
 
     @staticmethod
+    async def explosion_count():
+        sectios = await SectionStorage.get_all()
+        if sectios is None:
+            return 0
+
+        total = 0
+        for sec in sectios:
+            total += sec.get_explosion_count()
+
+        return total
+
+    @staticmethod
     async def _get_section_or_none(p: Point) -> Section | None:
         return await SectionStorage.get(p)
 

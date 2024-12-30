@@ -4,9 +4,21 @@ from .tiles import Tiles
 from .exceptions import InvalidDataLengthException
 from random import randint
 from typing import Callable
+from dataclasses import dataclass
 
 MINE_TILE = 0b01000000
 NUM_MASK = 0b00000111
+
+
+@dataclass
+class SectionHeader:
+    explosion_tiles_count: int | None
+
+    @staticmethod
+    def create():
+        return SectionHeader(
+            explosion_tiles_count=None
+        )
 
 
 class Section:
@@ -16,6 +28,7 @@ class Section:
     def __init__(self, p: Point, data: bytearray):
         self.p = p
         self.data = data
+        self.header = SectionHeader.create()
 
     def fetch(self, start: Point, end: Point | None = None) -> Tiles:
         if end is None:
@@ -46,6 +59,21 @@ class Section:
             idx_start = Section.LENGTH * (Section.LENGTH - y - 1) + start.x
             offset = (start.y - y) * x_gap
             self.data[idx_start: idx_start+x_gap] = data.data[offset: offset+x_gap]
+
+    def get_explosion_count(self):
+        if self.header.explosion_tiles_count is not None:
+            return self.header.explosion_tiles_count
+
+        self.header.explosion_tiles_count = 0
+
+        tiles = self.fetch(Point(0, 0), Point(Section.LENGTH-1, Section.LENGTH-1))
+
+        for d in tiles.data:
+            tile = Tile.from_int(d)
+            if tile.is_open and tile.is_mine:
+                self.header.explosion_tiles_count += 1
+
+        return self.header.explosion_tiles_count
 
     @property
     def abs_x(self):
