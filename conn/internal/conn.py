@@ -1,4 +1,4 @@
-from fastapi.websockets import WebSocket
+from fastapi.websockets import WebSocket, WebSocketState
 from websockets.exceptions import ConnectionClosed
 from message import Message
 from dataclasses import dataclass
@@ -23,6 +23,9 @@ class Conn:
         return Message.from_str(await self.conn.receive_text())
 
     async def send(self, msg: Message):
+        if self.conn.client_state == WebSocketState.DISCONNECTED:
+            return
+
         try:
             await self.conn.send_text(msg.to_str())
         except ConnectionClosed:
