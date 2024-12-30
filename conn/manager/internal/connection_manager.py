@@ -93,8 +93,9 @@ class ConnectionManager:
 
         for conn_id in message.header["target_conns"]:
             conn = ConnectionManager.get_conn(conn_id)
-            if not conn:
-                raise DumbHumanException()
+            if conn is None:
+                # 이벤트 발행 후 커넥션이 끊길 수 있음.
+                continue
 
             coroutines.append(conn.send(message))
 
