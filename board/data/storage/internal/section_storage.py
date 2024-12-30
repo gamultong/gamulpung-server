@@ -10,6 +10,7 @@ async def init_table():
     CREATE TABLE IF NOT EXISTS {TABLE_NAME}(
         x INT NOT NULL,
         y INT NOT NULL,
+        applied_flag INT NOT NULL,
         data BLOB NOT NULL
     )""")
 
@@ -33,9 +34,8 @@ class SectionStorage:
         return Point(x=row[0], y=row[1])
 
     async def get(p: Point) -> Section | None:
-        row = None
         cur = await db.execute(
-            f"SELECT data FROM {TABLE_NAME} WHERE x=:x AND y=:y",
+            f"SELECT applied_flag, data FROM {TABLE_NAME} WHERE x=:x AND y=:y",
             {"x": p.x, "y": p.y}
         )
         row = await cur.fetchone()
@@ -43,18 +43,19 @@ class SectionStorage:
         if row is None:
             return None
 
-        return Section(p=p, data=bytearray(row[0]))
+        return Section(p=p, applied_flag=row[0], data=bytearray(row[1]))
 
     async def set(section: Section):
         await db.execute(
             f"""
-            INSERT INTO {TABLE_NAME}(x, y, data)
-            VALUES (:x, :y, :data)
-            ON CONFLICT(x, y) DO UPDATE SET data = :data
+            INSERT INTO {TABLE_NAME}(x, y, applied_flag, data)
+            VALUES (:x, :y, :applied_flag, :data)
+            ON CONFLICT(x, y) DO UPDATE SET data = :data, applied_flag = :applied_flag
             """,
             {
                 "x": section.p.x,
                 "y": section.p.y,
+                "applied_flag": section.applied_flag,
                 "data": section.data
             }
         )

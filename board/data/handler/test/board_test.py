@@ -139,6 +139,7 @@ class BoardHandlerTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_random_open_position_one_section_one_open(self):
         sec = await SectionStorage.get(Point(-1, 0))
+        sec.applied_flag = 0
         await teardown_board()
         await SectionStorage.set(sec)
 

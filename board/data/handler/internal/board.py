@@ -254,30 +254,35 @@ class BoardHandler:
         """
         section = await BoardHandler._get_section_or_none(p)
 
-        is_complete_section = True
-
         if section is None:
-            is_complete_section = False
             section = Section.create(p)
 
+        # 모서리 적용이 끝난 섹션
+        if section.applied_flag == 0b11111111:
+            return section
+
         # (x, y)
+        # applied_flag를 위해 반대되는 방향을 대칭되게 배치
         delta = [
-            (0, 1), (0, -1), (-1, 0), (1, 0),  # 상하좌우
-            (-1, 1), (1, 1), (-1, -1), (1, -1),  # 좌상 우상 좌하 우하
+            (0, 1), (-1, 0), (-1, 1), (1, 1),  # 상, 좌, 좌상, 우상
+            (-1, -1), (1, -1), (1, 0), (0, -1)  # 좌하, 우하, 우, 하
         ]
 
         save_section_coroutines = []
 
         # 주변 섹션과 새로운 섹션의 인접 타일을 서로 적용시킨다.
-        for dx, dy in delta:
-            np = Point(p.x+dx, p.y+dy)
-            neighbor = await BoardHandler._get_section_or_none(np)
-            if neighbor is not None:
+        for idx in range(len(delta)):
+            if section.applied_flag & (0b00000001 << idx):
+                # 이미 적용된 섹션
                 continue
 
-            # 주변 섹션이 존재하지 않으면 새로 생성 및 section에 적용.
-            neighbor = Section.create(np)
-            is_complete_section = False
+            dx, dy = delta[idx]
+
+            np = Point(p.x+dx, p.y+dy)
+            neighbor = await BoardHandler._get_section_or_none(np)
+            if neighbor is None:
+                # 주변 섹션이 존재하지 않으면 새로 생성.
+                neighbor = Section.create(np)
 
             if dx != 0 and dy != 0:
                 section.apply_neighbor_diagonal(neighbor)
@@ -286,11 +291,13 @@ class BoardHandler:
             elif dy != 0:
                 section.apply_neighbor_vertical(neighbor)
 
+            # neighbor에 flag set
+            neighbor.applied_flag |= (0b00000001 << ((len(delta) - 1) - idx))
+
             save_section_coroutines.append(BoardHandler._set_section(neighbor))
 
-        # 모서리 적용이 안 되어 있었다면 적용된 버전의 섹션을 저장
-        if not is_complete_section:
-            save_section_coroutines.append(BoardHandler._set_section(section))
+        section.applied_flag = 0b11111111
+        save_section_coroutines.append(BoardHandler._set_section(section))
 
         await asyncio.gather(*save_section_coroutines)
 
