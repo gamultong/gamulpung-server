@@ -343,6 +343,9 @@ class CursorEventHandler:
         end_p = Point(position.x + 1, position.y - 1)
 
         nearby_cursors = CursorHandler.exists_range(start=start_p, end=end_p)
+        # nearby_cursors 중 죽지 않은 커서들만 걸러내기
+        nearby_cursors = list(filter(lambda c: c.revive_at is None, nearby_cursors))
+
         if len(nearby_cursors) > 0:
             revive_at = datetime.now() + timedelta(seconds=MINE_KILL_DURATION_SECONDS)
 
