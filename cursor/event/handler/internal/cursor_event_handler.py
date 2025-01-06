@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from message.payload import (
     MyCursorPayload,
     CursorsPayload,
-    CursorPayload,
+    CursorInfoPayload,
     CursorReviveAtPayload,
     CursorsDiedPayload,
     NewConnEvent,
@@ -54,6 +54,7 @@ class CursorEventHandler:
             header={"target_conns": [cursor.conn_id],
                     "origin_event": NewConnEvent.MY_CURSOR},
             payload=MyCursorPayload(
+                id=cursor.conn_id,
                 position=cursor.position,
                 pointer=cursor.pointer,
                 color=cursor.color
@@ -374,7 +375,8 @@ class CursorEventHandler:
                 },
                 payload=CursorsDiedPayload(
                     revive_at=revive_at.astimezone().isoformat(),
-                    cursors=[CursorPayload(
+                    cursors=[CursorInfoPayload(
+                        id=cursor.conn_id,
                         position=cursor.position,
                         color=cursor.color,
                         pointer=cursor.pointer
@@ -453,9 +455,7 @@ class CursorEventHandler:
                 header={"target_conns": watchers,
                         "origin_event": NewConnEvent.CURSOR_QUIT},
                 payload=CursorQuitPayload(
-                    position=cursor.position,
-                    pointer=cursor.pointer,
-                    color=cursor.color
+                    id=cursor.conn_id
                 )
             )
             await EventBroker.publish(message)
@@ -531,9 +531,10 @@ async def publish_new_cursors_event(target_cursors: list[Cursor], cursors: list[
                 "origin_event": NewConnEvent.CURSORS},
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
-                cursor.position,
-                cursor.pointer,
-                cursor.color,
+                id=cursor.conn_id,
+                position=cursor.position,
+                pointer=cursor.pointer,
+                color=cursor.color,
                 revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None
             ) for cursor in cursors]
         )

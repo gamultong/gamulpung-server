@@ -148,6 +148,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
 
         # message.payload
         self.assertEqual(type(got.payload), MyCursorPayload)
+        self.assertEqual(got.payload.id, expected_conn_id)
         self.assertIsNone(got.payload.pointer)
         self.assertEqual(got.payload.position, position)
         self.assertIn(got.payload.color, Color)
@@ -237,7 +238,8 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(len(mock.mock_calls), 3)
 
         # my-cursor
-        got = mock.mock_calls[0].args[0]
+        got: Message[MyCursorPayload] = mock.mock_calls[0].args[0]
+
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # target_conns 나인지 확인
@@ -249,6 +251,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(got.header["origin_event"], NewConnEvent.MY_CURSOR)
         # payload 확인
         self.assertEqual(type(got.payload), MyCursorPayload)
+        self.assertEqual(got.payload.id, new_conn_id)
         self.assertEqual(got.payload.position, position)
         self.assertIsNone(got.payload.pointer)
         self.assertIn(got.payload.color, Color)
@@ -754,7 +757,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(len(mock.mock_calls), 1)
 
         # cursors
-        got = mock.mock_calls[0].args[0]
+        got: Message[CursorsPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # origin_event
@@ -768,6 +771,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # payload 확인, B의 정보
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 1)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_b.conn_id)
         self.assertEqual(got.payload.cursors[0].position, message.payload.position)
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_b.pointer)
         self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
@@ -812,7 +816,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(len(mock.mock_calls), 2)
 
         # cursors
-        got = mock.mock_calls[1].args[0]
+        got: Message[CursorsPayload] = mock.mock_calls[1].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # origin_event
@@ -825,9 +829,11 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # payload 확인, A, B의 정보
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 2)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_a.conn_id)
         self.assertEqual(got.payload.cursors[0].position, self.cur_a.position)
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_a.pointer)
         self.assertEqual(got.payload.cursors[0].color, self.cur_a.color)
+        self.assertEqual(got.payload.cursors[1].id, self.cur_b.conn_id)
         self.assertEqual(got.payload.cursors[1].position, self.cur_b.position)
         self.assertEqual(got.payload.cursors[1].pointer, self.cur_b.pointer)
         self.assertEqual(got.payload.cursors[1].color, self.cur_b.color)
@@ -1128,9 +1134,7 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), CursorQuitPayload)
-        self.assertEqual(got.payload.position, self.cur_a.position)
-        self.assertEqual(got.payload.pointer, self.cur_a.pointer)
-        self.assertEqual(got.payload.color, self.cur_a.color)
+        self.assertEqual(got.payload.id, self.cur_a.conn_id)
 
         # watcher 관계 확인
         b_watchings = CursorHandler.get_watching("B")
@@ -1186,8 +1190,10 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # payload 확인
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 1)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_b.conn_id)
         self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
         self.assertEqual(got.payload.cursors[0].position, self.cur_b.position)
+        self.assertEqual(got.payload.cursors[0].pointer, self.cur_b.pointer)
 
         # watcher 관계 확인
         a_watching = CursorHandler.get_watching("A")
