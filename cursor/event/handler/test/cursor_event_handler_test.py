@@ -215,7 +215,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         CursorHandler.cursor_dict["C"].revive_at = c_revive_at
 
         original_cursors_len = 2
-        original_cursors = [c.conn_id for c in list(CursorHandler.cursor_dict.values())]
+        original_cursors = [c.id for c in list(CursorHandler.cursor_dict.values())]
 
         new_conn_id = "B"
         height = 7
@@ -320,7 +320,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         message = Message(
             event=PointEvent.POINTING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=PointingPayload(
                 click_type=click_type,
                 position=pointer
@@ -338,7 +338,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         # sender 확인
         self.assertIn("sender", got.header)
         self.assertEqual(type(got.header["sender"]), str)
-        self.assertEqual(got.header["sender"], self.cur_a.conn_id)
+        self.assertEqual(got.header["sender"], self.cur_a.id)
 
         # payload 확인
         self.assertEqual(type(got.payload), TryPointingPayload)
@@ -354,7 +354,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         message = Message(
             event=PointEvent.POINTING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=PointingPayload(
                 click_type=click_type,
                 position=pointer
@@ -392,7 +392,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         message = Message(
             event=PointEvent.POINTING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=PointingPayload(
                 click_type=click_type,
                 position=pointer
@@ -409,7 +409,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         pointer = Point(1, 0)
         message = Message(
             event=PointEvent.POINTING_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=PointingResultPayload(
                 pointer=pointer,
                 pointable=True
@@ -436,7 +436,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.id, self.cur_a.id)
         self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
         self.assertEqual(self.cur_a.pointer, pointer)
@@ -449,7 +449,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         message = Message(
             event=PointEvent.POINTING_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=PointingResultPayload(
                 pointer=pointer,
                 pointable=False
@@ -476,7 +476,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.id, self.cur_a.id)
         self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
         # 포인터 사라짐
@@ -487,7 +487,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         pointer = Point(1, 0)
         message = Message(
             event=PointEvent.POINTING_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=PointingResultPayload(
                 pointer=pointer,
                 pointable=True,
@@ -514,7 +514,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.id, self.cur_a.id)
         self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
     @patch("event.EventBroker.publish")
@@ -522,7 +522,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         pointer = Point(1, 0)
         message = Message(
             event=PointEvent.POINTING_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=PointingResultPayload(
                 pointer=pointer,
                 pointable=False,
@@ -552,7 +552,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
     async def test_receive_moving(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=CheckMovablePayload(
                 position=Point(
                     # 위로 한칸 이동
@@ -573,7 +573,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # sender 보냈는지 확인
         self.assertIn("sender", got.header)
         self.assertEqual(type(got.header["sender"]), str)
-        self.assertEqual(got.header["sender"], self.cur_a.conn_id)
+        self.assertEqual(got.header["sender"], self.cur_a.id)
 
         # 새로운 위치에 대해 check-movable 발행하는지 확인
         self.assertEqual(type(got.payload), CheckMovablePayload)
@@ -583,7 +583,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
     async def test_receive_moving_same_position(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=CheckMovablePayload(
                 position=self.cur_a.position
             )
@@ -614,7 +614,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
     async def test_receive_moving_out_of_bounds(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=CheckMovablePayload(
                 position=Point(
                     x=self.cur_a.position.x + 500,
@@ -648,7 +648,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
     async def test_receive_movable_result_not_movable(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=MovableResultPayload(
                 movable=False,
                 position=Point(0, 0)
@@ -685,7 +685,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         original_position = self.cur_a.position
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": self.cur_a.conn_id},
+            header={"receiver": self.cur_a.id},
             payload=MovableResultPayload(
                 movable=True,
                 position=Point(
@@ -738,7 +738,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         original_position = self.cur_b.position
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": self.cur_b.conn_id},
+            header={"receiver": self.cur_b.id},
             payload=MovableResultPayload(
                 movable=True,
                 position=Point(
@@ -768,7 +768,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # payload 확인, B의 정보
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 1)
-        self.assertEqual(got.payload.cursors[0].id, self.cur_b.conn_id)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_b.id)
         self.assertEqual(got.payload.cursors[0].position, message.payload.position)
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_b.pointer)
         self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
@@ -797,7 +797,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         original_position = self.cur_c.position
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": self.cur_c.conn_id},
+            header={"receiver": self.cur_c.id},
             payload=MovableResultPayload(
                 movable=True,
                 position=Point(
@@ -826,11 +826,11 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # payload 확인, A, B의 정보
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 2)
-        self.assertEqual(got.payload.cursors[0].id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_a.id)
         self.assertEqual(got.payload.cursors[0].position, self.cur_a.position)
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_a.pointer)
         self.assertEqual(got.payload.cursors[0].color, self.cur_a.color)
-        self.assertEqual(got.payload.cursors[1].id, self.cur_b.conn_id)
+        self.assertEqual(got.payload.cursors[1].id, self.cur_b.id)
         self.assertEqual(got.payload.cursors[1].position, self.cur_b.position)
         self.assertEqual(got.payload.cursors[1].pointer, self.cur_b.pointer)
         self.assertEqual(got.payload.cursors[1].color, self.cur_b.color)
@@ -868,7 +868,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         original_position = self.cur_c.position
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": self.cur_b.conn_id},
+            header={"receiver": self.cur_b.id},
             payload=MovableResultPayload(
                 movable=True,
                 position=Point(
@@ -1110,7 +1110,7 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_conn_closed(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.CONN_CLOSED,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=ConnClosedPayload()
         )
 
@@ -1131,7 +1131,7 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), CursorQuitPayload)
-        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.id, self.cur_a.id)
 
         # watcher 관계 확인
         b_watchings = CursorHandler.get_watching("B")
@@ -1143,7 +1143,7 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("B", c_watchers)
 
         # 커서 지워졌나 확인
-        self.assertIsNone(CursorHandler.get_cursor(self.cur_a.conn_id))
+        self.assertIsNone(CursorHandler.get_cursor(self.cur_a.id))
 
 
 class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
@@ -1162,7 +1162,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_set_view_size_grow_shrink_both(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=SetViewSizePayload(
                 width=self.cur_a.width-2,
                 height=self.cur_a.height+1
@@ -1183,11 +1183,11 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # target_conns 확인, [A]
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 1)
-        self.assertIn(self.cur_a.conn_id, got.header["target_conns"])
+        self.assertIn(self.cur_a.id, got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), CursorsPayload)
         self.assertEqual(len(got.payload.cursors), 1)
-        self.assertEqual(got.payload.cursors[0].id, self.cur_b.conn_id)
+        self.assertEqual(got.payload.cursors[0].id, self.cur_b.id)
         self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
         self.assertEqual(got.payload.cursors[0].position, self.cur_b.position)
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_b.pointer)
@@ -1205,7 +1205,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_set_view_size_same(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=SetViewSizePayload(
                 width=self.cur_a.width,
                 height=self.cur_a.height
@@ -1228,7 +1228,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_set_view_size_exceed_limit(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=SetViewSizePayload(
                 width=VIEW_SIZE_LIMIT + 1,
                 height=self.cur_a.height
@@ -1249,7 +1249,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # target_conns 확인, [A]
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 1)
-        self.assertIn(self.cur_a.conn_id, got.header["target_conns"])
+        self.assertIn(self.cur_a.id, got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), ErrorPayload)
 
@@ -1257,7 +1257,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_set_view_size_0(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
-            header={"sender": self.cur_a.conn_id},
+            header={"sender": self.cur_a.id},
             payload=SetViewSizePayload(
                 width=0,
                 height=self.cur_a.height
@@ -1278,7 +1278,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # target_conns 확인, [A]
         self.assertIn("target_conns", got.header)
         self.assertEqual(len(got.header["target_conns"]), 1)
-        self.assertIn(self.cur_a.conn_id, got.header["target_conns"])
+        self.assertIn(self.cur_a.id, got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), ErrorPayload)
 
@@ -1286,7 +1286,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
     async def test_receive_set_view_size_shrink(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
-            header={"sender": self.cur_b.conn_id},
+            header={"sender": self.cur_b.id},
             payload=SetViewSizePayload(
                 width=self.cur_b.width,
                 height=self.cur_b.height-1

@@ -15,6 +15,10 @@ class Cursor:
     _revive_at: datetime | None = None
 
     @property
+    def id(self) -> str:
+        return self.conn_id
+
+    @property
     def revive_at(self) -> datetime | None:
         if (self._revive_at is not None) and (self._revive_at <= datetime.now()):
             self._revive_at = None

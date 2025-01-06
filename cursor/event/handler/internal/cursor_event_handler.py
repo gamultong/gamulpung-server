@@ -51,10 +51,10 @@ class CursorEventHandler:
 
         new_cursor_message = Message(
             event="multicast",
-            header={"target_conns": [cursor.conn_id],
+            header={"target_conns": [cursor.id],
                     "origin_event": NewConnEvent.MY_CURSOR},
             payload=MyCursorPayload(
-                id=cursor.conn_id,
+                id=cursor.id,
                 position=cursor.position,
                 pointer=cursor.pointer,
                 color=cursor.color
@@ -72,7 +72,7 @@ class CursorEventHandler:
             y=cursor.position.y - cursor.height
         )
 
-        cursors_in_range = CursorHandler.exists_range(start=start_p, end=end_p, exclude_ids=[cursor.conn_id])
+        cursors_in_range = CursorHandler.exists_range(start=start_p, end=end_p, exclude_ids=[cursor.id])
         if len(cursors_in_range) > 0:
             # 내가 보고있는 커서들
             for other_cursor in cursors_in_range:
@@ -85,7 +85,7 @@ class CursorEventHandler:
                 )
             )
 
-        cursors_with_view_including = CursorHandler.view_includes_point(p=cursor.position, exclude_ids=[cursor.conn_id])
+        cursors_with_view_including = CursorHandler.view_includes_point(p=cursor.position, exclude_ids=[cursor.id])
         if len(cursors_with_view_including) > 0:
             # 나를 보고있는 커서들
             for other_cursor in cursors_with_view_including:
@@ -152,16 +152,16 @@ class CursorEventHandler:
             # 변동 없음
             return
 
-        watchers = CursorHandler.get_watchers(cursor.conn_id)
+        watchers = CursorHandler.get_watchers(cursor.id)
 
         message = Message(
             event="multicast",
             header={
-                "target_conns": [cursor.conn_id] + watchers,
+                "target_conns": [cursor.id] + watchers,
                 "origin_event": PointEvent.POINTER_SET
             },
             payload=PointerSetPayload(
-                id=cursor.conn_id,
+                id=cursor.id,
                 pointer=cursor.pointer
             )
         )
@@ -201,7 +201,7 @@ class CursorEventHandler:
 
         message = Message(
             event=MoveEvent.CHECK_MOVABLE,
-            header={"sender": cursor.conn_id},
+            header={"sender": cursor.id},
             payload=CheckMovablePayload(
                 position=new_position
             )
@@ -237,9 +237,9 @@ class CursorEventHandler:
         # 새로운 뷰의 커서들 찾기
         top_left = Point(cursor.position.x - cursor.width, cursor.position.y + cursor.height)
         bottom_right = Point(cursor.position.x + cursor.width, cursor.position.y - cursor.height)
-        cursors_in_view = CursorHandler.exists_range(start=top_left, end=bottom_right, exclude_ids=[cursor.conn_id])
+        cursors_in_view = CursorHandler.exists_range(start=top_left, end=bottom_right, exclude_ids=[cursor.id])
 
-        original_watching_ids = CursorHandler.get_watching(cursor_id=cursor.conn_id)
+        original_watching_ids = CursorHandler.get_watching(cursor_id=cursor.id)
         original_watchings = [CursorHandler.get_cursor(id) for id in original_watching_ids]
 
         if len(original_watchings) > 0:
@@ -251,7 +251,7 @@ class CursorEventHandler:
 
         publish_coroutines = []
 
-        new_watchings = list(filter(lambda c: c.conn_id not in original_watching_ids, cursors_in_view))
+        new_watchings = list(filter(lambda c: c.id not in original_watching_ids, cursors_in_view))
         if len(new_watchings) > 0:
             # 새로운 watching 커서들 연관관계 설정
             for other_cursor in new_watchings:
@@ -266,9 +266,9 @@ class CursorEventHandler:
             )
 
         # 새로운 위치를 바라보고 있는 커서들 찾기, 본인 제외
-        watchers_new_pos = CursorHandler.view_includes_point(p=new_position, exclude_ids=[cursor.conn_id])
+        watchers_new_pos = CursorHandler.view_includes_point(p=new_position, exclude_ids=[cursor.id])
 
-        original_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.conn_id)
+        original_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.id)
         original_watchers = [CursorHandler.get_cursor(id) for id in original_watcher_ids]
 
         if len(original_watchers) > 0:
@@ -294,7 +294,7 @@ class CursorEventHandler:
                 if not in_view:
                     CursorHandler.remove_watcher(watcher=other_cursor, watching=cursor)
 
-        new_watchers = list(filter(lambda c: c.conn_id not in original_watcher_ids, watchers_new_pos))
+        new_watchers = list(filter(lambda c: c.id not in original_watcher_ids, watchers_new_pos))
         if len(new_watchers) > 0:
             # 새로운 watcher 커서들 연관관계 설정
             for other_cursor in new_watchers:
@@ -327,7 +327,7 @@ class CursorEventHandler:
             pub_message = Message(
                 event="multicast",
                 header={
-                    "target_conns": [c.conn_id for c in view_cursors],
+                    "target_conns": [c.id for c in view_cursors],
                     "origin_event": message.event
                 },
                 payload=message.payload
@@ -353,7 +353,7 @@ class CursorEventHandler:
             pub_message = Message(
                 event="multicast",
                 header={
-                    "target_conns": [c.conn_id for c in nearby_cursors],
+                    "target_conns": [c.id for c in nearby_cursors],
                     "origin_event": InteractionEvent.YOU_DIED
                 },
                 payload=YouDiedPayload(revive_at=revive_at.astimezone().isoformat())
@@ -363,8 +363,8 @@ class CursorEventHandler:
             # 보고있는 커서들에게 cursors-died
             watcher_ids: set[str] = set()
             for cursor in nearby_cursors:
-                temp_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.conn_id)
-                watcher_ids.update(temp_watcher_ids + [cursor.conn_id])
+                temp_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.id)
+                watcher_ids.update(temp_watcher_ids + [cursor.id])
 
             pub_message = Message(
                 event="multicast",
@@ -375,7 +375,7 @@ class CursorEventHandler:
                 payload=CursorsDiedPayload(
                     revive_at=revive_at.astimezone().isoformat(),
                     cursors=[CursorInfoPayload(
-                        id=cursor.conn_id,
+                        id=cursor.id,
                         position=cursor.position,
                         color=cursor.color,
                         pointer=cursor.pointer
@@ -403,7 +403,7 @@ class CursorEventHandler:
             pub_message = Message(
                 event="multicast",
                 header={
-                    "target_conns": [c.conn_id for c in view_cursors],
+                    "target_conns": [c.id for c in view_cursors],
                     "origin_event": message.event
                 },
                 payload=message.payload
@@ -421,7 +421,7 @@ class CursorEventHandler:
             pub_message = Message(
                 event="multicast",
                 header={
-                    "target_conns": [c.conn_id for c in view_cursors],
+                    "target_conns": [c.id for c in view_cursors],
                     "origin_event": message.event
                 },
                 payload=message.payload
@@ -435,8 +435,8 @@ class CursorEventHandler:
 
         cursor = CursorHandler.get_cursor(sender)
 
-        watching = CursorHandler.get_watching(cursor_id=cursor.conn_id)
-        watchers = CursorHandler.get_watchers(cursor_id=cursor.conn_id)
+        watching = CursorHandler.get_watching(cursor_id=cursor.id)
+        watchers = CursorHandler.get_watchers(cursor_id=cursor.id)
 
         for id in watching:
             other_cursor = CursorHandler.get_cursor(id)
@@ -446,7 +446,7 @@ class CursorEventHandler:
             other_cursor = CursorHandler.get_cursor(id)
             CursorHandler.remove_watcher(watcher=other_cursor, watching=cursor)
 
-        CursorHandler.remove_cursor(cursor.conn_id)
+        CursorHandler.remove_cursor(cursor.id)
 
         if len(watchers) > 0:
             message = Message(
@@ -454,7 +454,7 @@ class CursorEventHandler:
                 header={"target_conns": watchers,
                         "origin_event": NewConnEvent.CURSOR_QUIT},
                 payload=CursorQuitPayload(
-                    id=cursor.conn_id
+                    id=cursor.id
                 )
             )
             await EventBroker.publish(message)
@@ -485,7 +485,7 @@ class CursorEventHandler:
             ))
             return
 
-        cur_watching = CursorHandler.get_watching(cursor_id=cursor.conn_id)
+        cur_watching = CursorHandler.get_watching(cursor_id=cursor.id)
 
         old_width, old_height = cursor.width, cursor.height
         cursor.set_size(new_width, new_height)
@@ -526,11 +526,11 @@ class CursorEventHandler:
 async def publish_new_cursors_event(target_cursors: list[Cursor], cursors: list[Cursor]):
     message = Message(
         event="multicast",
-        header={"target_conns": [cursor.conn_id for cursor in target_cursors],
+        header={"target_conns": [cursor.id for cursor in target_cursors],
                 "origin_event": NewConnEvent.CURSORS},
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
-                id=cursor.conn_id,
+                id=cursor.id,
                 position=cursor.position,
                 pointer=cursor.pointer,
                 color=cursor.color,
