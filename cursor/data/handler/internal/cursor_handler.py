@@ -114,8 +114,8 @@ class CursorHandler:
 
     @staticmethod
     def add_watcher(watcher: Cursor, watching: Cursor) -> None:
-        watcher_id = watcher.conn_id
-        watching_id = watching.conn_id
+        watcher_id = watcher.id
+        watching_id = watching.id
 
         watcher_exists = CursorHandler.check_cursor_exists(watcher_id)
         if not watcher_exists:
@@ -129,7 +129,7 @@ class CursorHandler:
             raise AlreadyWatchingException(watcher=watcher_id, watching=watching_id)
 
         if not watcher.check_in_view(watching.position):
-            raise NotWatchableException(p=watching.position, cursor_id=watcher.conn_id)
+            raise NotWatchableException(p=watching.position, cursor_id=watcher.id)
 
         if not watcher_id in CursorHandler.watching:
             CursorHandler.watching[watcher_id] = []
@@ -141,8 +141,8 @@ class CursorHandler:
 
     @staticmethod
     def remove_watcher(watcher: Cursor, watching: Cursor):
-        watcher_id = watcher.conn_id
-        watching_id = watching.conn_id
+        watcher_id = watcher.id
+        watching_id = watching.id
 
         watcher_exists = CursorHandler.check_cursor_exists(watcher_id)
         if not watcher_exists:

@@ -20,9 +20,8 @@ class MovingPayload(Payload):
 
 @dataclass
 class MovedPayload(Payload):
-    origin_position: ParsablePayload[Point]
+    id: str
     new_position: ParsablePayload[Point]
-    color: Color
 
 
 @dataclass

@@ -9,7 +9,7 @@ class CursorTestCase(unittest.TestCase):
         conn_id = "some id"
         cursor = Cursor.create(conn_id)
 
-        self.assertEqual(cursor.conn_id, conn_id)
+        self.assertEqual(cursor.id, conn_id)
         self.assertEqual(cursor.position.x, 0)
         self.assertEqual(cursor.position.y, 0)
         self.assertIsNone(cursor.pointer)

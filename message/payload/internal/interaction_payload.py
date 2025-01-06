@@ -1,6 +1,6 @@
 from .base_payload import Payload
 from .parsable_payload import ParsablePayload
-from .new_conn_payload import CursorPayload
+from .new_conn_payload import CursorInfoPayload
 from board.data import Point, Tile
 from cursor.data import Color
 from dataclasses import dataclass
@@ -23,7 +23,7 @@ class YouDiedPayload(Payload):
 @dataclass
 class CursorsDiedPayload(Payload):
     revive_at: str
-    cursors: list[CursorPayload]
+    cursors: list[CursorInfoPayload]
 
 
 @dataclass

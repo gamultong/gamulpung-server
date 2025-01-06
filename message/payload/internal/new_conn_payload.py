@@ -33,13 +33,18 @@ class NewCursorCandidatePayload(Payload):
 
 @dataclass
 class CursorPayload(Payload):
+    id: str
+
+
+@dataclass
+class CursorInfoPayload(CursorPayload):
     position: ParsablePayload[Point]
     pointer: ParsablePayload[Point] | None
     color: Color
 
 
 @dataclass
-class CursorReviveAtPayload(CursorPayload):
+class CursorReviveAtPayload(CursorInfoPayload):
     revive_at: str | None
 
 
@@ -48,7 +53,7 @@ class CursorsPayload(Payload):
     cursors: list[CursorReviveAtPayload]
 
 
-class MyCursorPayload(CursorPayload):
+class MyCursorPayload(CursorInfoPayload):
     pass
 
 
