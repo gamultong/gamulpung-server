@@ -420,7 +420,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # pointer-set 발행하는지 확인
         mock.assert_called_once()
-        got = mock.mock_calls[0].args[0]
+        got: Message[PointerSetPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
 
@@ -436,9 +436,8 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertEqual(got.payload.origin_position, origin_pointer)
-        self.assertEqual(got.payload.color, self.cur_a.color)
-        self.assertEqual(got.payload.new_position, pointer)
+        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
         self.assertEqual(self.cur_a.pointer, pointer)
 
@@ -461,7 +460,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # pointer-set 발행하는지 확인
         mock.assert_called_once()
-        got = mock.mock_calls[0].args[0]
+        got: Message[PointerSetPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
 
@@ -477,9 +476,8 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertEqual(got.payload.origin_position, origin_pointer)
-        self.assertEqual(got.payload.color, self.cur_a.color)
-        self.assertIsNone(got.payload.new_position)
+        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
         # 포인터 사라짐
         self.assertIsNone(self.cur_a.pointer)
@@ -500,7 +498,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # pointer-set 발행하는지 확인
         mock.assert_called_once()
-        got = mock.mock_calls[0].args[0]
+        got: Message[PointerSetPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
 
@@ -516,9 +514,8 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         # payload 확인
         self.assertEqual(type(got.payload), PointerSetPayload)
-        self.assertIsNone(got.payload.origin_position)
-        self.assertEqual(got.payload.color, self.cur_a.color)
-        self.assertEqual(got.payload.new_position, pointer)
+        self.assertEqual(got.payload.id, self.cur_a.conn_id)
+        self.assertEqual(got.payload.pointer, self.cur_a.pointer)
 
     @patch("event.EventBroker.publish")
     async def test_receive_pointing_result_not_pointable_no_original_pointer(self, mock: AsyncMock):

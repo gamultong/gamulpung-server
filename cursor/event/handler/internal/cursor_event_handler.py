@@ -161,9 +161,8 @@ class CursorEventHandler:
                 "origin_event": PointEvent.POINTER_SET
             },
             payload=PointerSetPayload(
-                origin_position=origin_pointer,
-                new_position=new_pointer,
-                color=cursor.color,
+                id=cursor.conn_id,
+                pointer=cursor.pointer
             )
         )
 
