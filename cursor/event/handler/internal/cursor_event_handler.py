@@ -280,9 +280,8 @@ class CursorEventHandler:
                     "origin_event": MoveEvent.MOVED,
                 },
                 payload=MovedPayload(
-                    origin_position=original_position,
-                    new_position=new_position,
-                    color=cursor.color,
+                    id=cursor.id,
+                    new_position=new_position
                 )
             )
 

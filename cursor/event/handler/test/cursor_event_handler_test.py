@@ -659,7 +659,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
 
         # error 발행하는지 확인
         mock.assert_called_once()
-        got = mock.mock_calls[0].args[0]
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
 
@@ -701,7 +701,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(len(mock.mock_calls), 1)
 
         # moved
-        got = mock.mock_calls[0].args[0]
+        got: Message[MovedPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, "multicast")
         # origin_event
@@ -713,9 +713,8 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertIn("B", got.header["target_conns"])
         # payload 확인
         self.assertEqual(type(got.payload), MovedPayload)
-        self.assertEqual(got.payload.origin_position, original_position)
+        self.assertEqual(got.payload.id, self.cur_a.id)
         self.assertEqual(got.payload.new_position, message.payload.position)
-        self.assertEqual(got.payload.color, self.cur_a.color)
 
         # watcher 관계 확인
         a_watchings = CursorHandler.get_watching("A")
@@ -836,22 +835,21 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(got.payload.cursors[1].color, self.cur_b.color)
 
         # moved
-        got = mock.mock_calls[0].args[0]
-        self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, "multicast")
+        got1: Message[MovedPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got1), Message)
+        self.assertEqual(got1.event, "multicast")
         # origin_event
-        self.assertIn("origin_event", got.header)
-        self.assertEqual(got.header["origin_event"], MoveEvent.MOVED)
+        self.assertIn("origin_event", got1.header)
+        self.assertEqual(got1.header["origin_event"], MoveEvent.MOVED)
         # target_conns 확인, [A, B]
-        self.assertIn("target_conns", got.header)
-        self.assertEqual(len(got.header["target_conns"]), 2)
-        self.assertIn("A", got.header["target_conns"])
-        self.assertIn("B", got.header["target_conns"])
+        self.assertIn("target_conns", got1.header)
+        self.assertEqual(len(got1.header["target_conns"]), 2)
+        self.assertIn("A", got1.header["target_conns"])
+        self.assertIn("B", got1.header["target_conns"])
         # payload 확인
-        self.assertEqual(type(got.payload), MovedPayload)
-        self.assertEqual(got.payload.origin_position, original_position)
-        self.assertEqual(got.payload.new_position, message.payload.position)
-        self.assertEqual(got.payload.color, self.cur_c.color)
+        self.assertEqual(type(got1.payload), MovedPayload)
+        self.assertEqual(got1.payload.id, self.cur_c.id)
+        self.assertEqual(got1.payload.new_position, message.payload.position)
 
         # watcher 관계 확인
         c_watchings = CursorHandler.get_watching("C")
