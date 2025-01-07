@@ -1,5 +1,5 @@
-from board.data import Point
-from cursor.data import Cursor, Color
+from data_layer.board import Point
+from data_layer.cursor import Cursor, Color
 from cursor.data.handler import CursorHandler
 
 

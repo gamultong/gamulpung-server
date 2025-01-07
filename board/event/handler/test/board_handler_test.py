@@ -1,6 +1,6 @@
 import asyncio
-from cursor.data import Color
-from board.data import Point, Tile, Tiles, Section
+from data_layer.cursor import Color
+from data_layer.board import Point, Tile, Tiles, Section
 from board.event.handler import BoardEventHandler
 from board.data.handler import BoardHandler
 from board.data.storage.test.fixtures import setup_board
@@ -59,7 +59,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
     async def asyncSetUp(self):
         await setup_board()
 
-    @patch("board.data.Section.create")
+    @patch("data_layer.board.Section.create")
     @patch("event.EventBroker.publish")
     async def test_fetch_tiles_receiver_normal_case(self, mock: AsyncMock, create_mock):
         """

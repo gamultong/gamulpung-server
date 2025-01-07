@@ -1,4 +1,4 @@
-from board.data import Point
+from data_layer.board import Point
 from dataclasses import dataclass
 from .base_payload import Payload
 from .parsable_payload import ParsablePayload

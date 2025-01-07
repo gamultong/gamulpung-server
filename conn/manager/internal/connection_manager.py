@@ -1,6 +1,6 @@
 import asyncio
 from fastapi.websockets import WebSocket
-from conn import Conn
+from data_layer.conn import Conn
 from message import Message
 from message.payload import (
     NewConnEvent, NewConnPayload, ConnClosedPayload, DumbHumanException, ErrorEvent, ErrorPayload

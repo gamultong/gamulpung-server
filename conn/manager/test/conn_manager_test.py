@@ -2,7 +2,7 @@ import unittest
 import uuid
 
 from unittest.mock import AsyncMock, patch
-from conn import Conn
+from data_layer.conn import Conn
 from conn.manager import ConnectionManager
 from message import Message
 from message.payload import (
@@ -10,7 +10,7 @@ from message.payload import (
 )
 from event import EventBroker
 from conn.test.fixtures import create_connection_mock
-from board.data import Point
+from data_layer.board import Point
 
 import asyncio
 

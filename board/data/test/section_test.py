@@ -1,6 +1,6 @@
 from tests.utils import cases
-from board.data import Section, Point, Tile, Tiles
-from board.data.internal.section import for_each_neighbor
+from data_layer.board import Section, Point, Tile, Tiles
+from data_layer.board.internal.section import for_each_neighbor
 
 import unittest
 

@@ -1,8 +1,8 @@
 import asyncio
 import random
-from board.data import Point, Section, Tile, Tiles
+from data_layer.board import Point, Section, Tile, Tiles
 from board.data.storage import SectionStorage
-from cursor.data import Color
+from data_layer.cursor import Color
 
 
 async def init_board():

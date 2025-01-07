@@ -1,5 +1,5 @@
-from board.data import Tile, Tiles
-from cursor.data import Color
+from data_layer.board import Tile, Tiles
+from data_layer.cursor import Color
 
 import unittest
 

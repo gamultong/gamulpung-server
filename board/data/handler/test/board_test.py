@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from tests.utils import cases
-from board.data import Point, Tile, Section
+from data_layer.board import Point, Tile, Section
 from board.data.handler import BoardHandler
-from cursor.data import Color
+from data_layer.cursor import Color
 
 from board.data.storage import SectionStorage
 from board.data.storage.test.fixtures import setup_board, teardown_board
@@ -39,7 +39,7 @@ class BoardHandlerTestCase(unittest.IsolatedAsyncioTestCase):
         await setup_board()
 
     @cases(FETCH_CASE)
-    @patch("board.data.Section.create")
+    @patch("data_layer.board.Section.create")
     async def test_fetch(self, mock: MagicMock, data, expect):
         def stub_section_create(p: Point) -> Section:
             return Section(
@@ -67,7 +67,7 @@ class BoardHandlerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(tile.is_open)
         self.assertEqual(tile, result)
 
-    @patch("board.data.Section.create")
+    @patch("data_layer.board.Section.create")
     async def test_open_tiles_cascade(self, create_seciton_mock: MagicMock):
         def stub_section_create(p: Point) -> Section:
             return Section(

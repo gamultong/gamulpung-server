@@ -1,5 +1,5 @@
-from cursor.data import Color
-from board.data import Tile, InvalidTileException
+from data_layer.cursor import Color
+from data_layer.board import Tile, InvalidTileException
 
 import unittest
 from tests.utils import cases

@@ -1,4 +1,4 @@
-from board.data import Point, Section
+from data_layer.board import Point, Section
 import asyncio
 from db import db
 

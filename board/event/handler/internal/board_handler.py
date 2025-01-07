@@ -1,8 +1,8 @@
 import asyncio
 from event import EventBroker
-from board.data import Point, Tile, Tiles, Section
+from data_layer.board import Point, Tile, Tiles, Section
 from board.data.handler import BoardHandler
-from cursor.data import Color
+from data_layer.cursor import Color
 from message import Message
 from message.payload import (
     FetchTilesPayload,
