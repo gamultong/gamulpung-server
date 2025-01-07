@@ -1,1 +1,1 @@
-from ..data_layer.conn.conn import Conn
+from ..data_layer.conn.internal.conn import Conn

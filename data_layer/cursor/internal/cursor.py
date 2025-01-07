@@ -1,11 +1,13 @@
-from board.data import Point
+from data_layer.base import DataObj
+
+from data_layer.board import Point
 from .color import Color
 from dataclasses import dataclass
 from datetime import datetime
 
 
 @dataclass
-class Cursor:
+class Cursor(DataObj):
     conn_id: str
     position: Point
     pointer: Point | None

@@ -1,5 +1,6 @@
+from data_layer.base import DataObj
+
 from .point import Point
-from .tile import Tile
 from .tiles import Tiles
 from .exceptions import InvalidDataLengthException
 from random import randint
@@ -9,7 +10,7 @@ MINE_TILE = 0b01000000
 NUM_MASK = 0b00000111
 
 
-class Section:
+class Section(DataObj):
     LENGTH = 100
     MINE_RATIO = 0.3
 
