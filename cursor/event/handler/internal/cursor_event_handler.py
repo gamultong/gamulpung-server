@@ -144,13 +144,8 @@ class CursorEventHandler:
 
         cursor = CursorHandler.get_cursor(receiver)
 
-        new_pointer = message.payload.pointer if message.payload.pointable else None
-        origin_pointer = cursor.pointer
-        cursor.pointer = new_pointer
-
-        if origin_pointer is None and new_pointer is None:
-            # 변동 없음
-            return
+        # TODO: message.payload.pointable 사용처?
+        cursor.pointer = message.payload.pointer
 
         watchers = CursorHandler.get_watchers(cursor.id)
 
