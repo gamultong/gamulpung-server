@@ -1,10 +1,12 @@
+from data_layer.base import DataObj
+
 from dataclasses import dataclass
-from cursor.data import Color
+from data_layer.cursor import Color
 from .exceptions import InvalidTileException
 
 
 @dataclass
-class Tile:
+class Tile(DataObj):
     is_open: bool
     is_mine: bool
     is_flag: bool

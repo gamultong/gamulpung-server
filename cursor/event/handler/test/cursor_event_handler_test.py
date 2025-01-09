@@ -1,7 +1,7 @@
 import asyncio
-from board.data import Section
+from data_layer.board import Section
 from datetime import datetime
-from cursor.data import Cursor, Color
+from data_layer.cursor import Cursor, Color
 from cursor.data.handler import CursorHandler
 from cursor.event.handler import CursorEventHandler
 from message import Message
@@ -36,7 +36,7 @@ from message.payload import (
 from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
-from board.data import Point, Tile, Tiles
+from data_layer.board import Point, Tile, Tiles
 from config import VIEW_SIZE_LIMIT
 
 """

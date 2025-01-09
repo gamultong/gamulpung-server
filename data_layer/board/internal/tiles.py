@@ -1,8 +1,9 @@
+from data_layer.base import DataObj
 from dataclasses import dataclass
 
 
 @dataclass
-class Tiles:
+class Tiles(DataObj):
     data: bytearray
 
     def to_str(self):

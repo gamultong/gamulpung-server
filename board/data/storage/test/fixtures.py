@@ -1,4 +1,4 @@
-from board.data import Section, Point
+from data_layer.board import Section, Point
 from board.data.storage import SectionStorage
 
 from db import db

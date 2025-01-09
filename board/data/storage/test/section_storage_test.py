@@ -1,4 +1,4 @@
-from board.data import Point, Section
+from data_layer.board import Point, Section
 from board.data.storage import SectionStorage
 from .fixtures import teardown_board
 

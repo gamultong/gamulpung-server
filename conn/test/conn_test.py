@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from message.payload import Payload
 from message import Message
 from message.internal.message import DECODABLE_PAYLOAD_DICT
-from conn import Conn
+from data_layer.conn import Conn
 
 
 @dataclass

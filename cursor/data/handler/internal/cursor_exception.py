@@ -1,4 +1,4 @@
-from board.data import Point
+from data_layer.board import Point
 
 
 class AlreadyWatchingException(Exception):

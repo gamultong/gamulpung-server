@@ -1,8 +1,9 @@
+from data_layer.base import DataObj
 from dataclasses import dataclass
 
 
 @dataclass
-class Point:
+class Point(DataObj):
     x: int
     y: int
 

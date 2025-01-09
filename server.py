@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from conn.manager import ConnectionManager
-from board.data import Section
+from data_layer.board import Section
 from board.event.handler import BoardEventHandler
 from cursor.event.handler import CursorEventHandler
 from message import Message

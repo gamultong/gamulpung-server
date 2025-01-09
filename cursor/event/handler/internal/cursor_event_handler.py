@@ -1,7 +1,7 @@
 import asyncio
-from cursor.data import Cursor
+from data_layer.cursor import Cursor
 from cursor.data.handler import CursorHandler
-from board.data import Point, Tile, Tiles, Section
+from data_layer.board import Point, Tile, Tiles, Section
 from event import EventBroker
 from message import Message
 from datetime import datetime, timedelta
