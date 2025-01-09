@@ -4,7 +4,7 @@ from fastapi.websockets import WebSocketDisconnect
 from server import app
 from message import Message
 from message.payload import FetchTilesPayload, TilesPayload, TilesEvent, NewConnEvent
-from data_layer.board.storage.test.fixtures import setup_board, teardown_board
+from board.data.storage.test.fixtures import setup_board, teardown_board
 from board.event.handler import BoardEventHandler
 from data_layer.board import Point, Tile, Tiles
 from event import EventBroker
