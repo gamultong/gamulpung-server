@@ -7,3 +7,4 @@ from .internal.pointing_payload import PointerSetPayload, PointingResultPayload,
 from .internal.move_payload import MoveEvent, MovingPayload, MovedPayload, CheckMovablePayload, MovableResultPayload
 from .internal.interaction_payload import YouDiedPayload, InteractionEvent, SingleTileOpenedPayload, TilesOpenedPayload, FlagSetPayload, CursorsDiedPayload
 from .internal.error_payload import ErrorEvent, ErrorPayload
+from .internal.chat_payload import ChatPayload, SendChatPayload, ChatEvent

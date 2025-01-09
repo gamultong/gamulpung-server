@@ -32,9 +32,12 @@ from message.payload import (
     SetViewSizePayload,
     ErrorEvent,
     ErrorPayload,
-    NewCursorCandidatePayload
+    NewCursorCandidatePayload,
+    ChatEvent,
+    ChatPayload,
+    SendChatPayload
 )
-from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT
+from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
 
 
 class CursorEventHandler:
@@ -515,6 +518,41 @@ class CursorEventHandler:
                 continue
 
             CursorHandler.remove_watcher(watcher=cursor, watching=other_cursor)
+
+    @EventBroker.add_receiver(ChatEvent.SEND_CHAT)
+    @staticmethod
+    async def receive_send_chat(message: Message[SendChatPayload]):
+        sender = message.header["sender"]
+
+        content = message.payload.message
+
+        if len(content) > CHAT_MAX_LENGTH:
+            # 채팅 길이 제한 넘김
+            await EventBroker.publish(Message(
+                event="multicast",
+                header={
+                    "origin_event": ErrorEvent.ERROR,
+                    "target_conns": [sender]
+                },
+                payload=ErrorPayload(msg=f"chat length limit exceeded. max length: {CHAT_MAX_LENGTH}")
+            ))
+            return
+
+        watchers = CursorHandler.get_watchers(sender)
+
+        message = Message(
+            event="multicast",
+            header={
+                "origin_event": ChatEvent.CHAT,
+                "target_conns": [sender] + watchers
+            },
+            payload=ChatPayload(
+                cursor_id=sender,
+                message=content
+            )
+        )
+
+        await EventBroker.publish(message)
 
 
 async def publish_new_cursors_event(target_cursors: list[Cursor], cursors: list[Cursor]):

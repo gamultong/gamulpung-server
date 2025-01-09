@@ -31,13 +31,16 @@ from message.payload import (
     SetViewSizePayload,
     ErrorEvent,
     ErrorPayload,
-    NewCursorCandidatePayload
+    NewCursorCandidatePayload,
+    SendChatPayload,
+    ChatPayload,
+    ChatEvent
 )
 from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
 from data_layer.board import Point, Tile, Tiles
-from config import VIEW_SIZE_LIMIT
+from config import VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
 
 """
 CursorEventHandler Test
@@ -1243,6 +1246,78 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
 
         a_watchers = CursorHandler.get_watchers("A")
         self.assertEqual(len(a_watchers), 0)
+
+
+class CursorEventHandler_Chat_TestCase(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        curs = setup_cursor_locations()
+        self.cur_a = curs[0]
+        self.cur_b = curs[1]
+        self.cur_c = curs[2]
+
+    def tearDown(self):
+        CursorHandler.cursor_dict = {}
+        CursorHandler.watchers = {}
+        CursorHandler.watching = {}
+
+    @patch("event.EventBroker.publish")
+    async def test_receive_send_chat(self, mock: AsyncMock):
+        content = "test"
+
+        message = Message(
+            event=ChatEvent.SEND_CHAT,
+            header={"sender": self.cur_a.id},
+            payload=SendChatPayload(message=content)
+        )
+
+        await CursorEventHandler.receive_send_chat(message)
+
+        self.assertEqual(len(mock.mock_calls), 1)
+
+        # chat
+        got: Message[ChatPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ChatEvent.CHAT)
+        # target_conns 확인, [A, B]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 2)
+        self.assertIn(self.cur_a.id, got.header["target_conns"])
+        self.assertIn(self.cur_b.id, got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), ChatPayload)
+        self.assertEqual(got.payload.cursor_id, self.cur_a.id)
+        self.assertEqual(got.payload.message, content)
+
+    @patch("event.EventBroker.publish")
+    async def test_receive_send_chat_length_exceeded(self, mock: AsyncMock):
+        content = "a" * (CHAT_MAX_LENGTH+1)
+
+        message = Message(
+            event=ChatEvent.SEND_CHAT,
+            header={"sender": self.cur_a.id},
+            payload=SendChatPayload(message=content)
+        )
+
+        await CursorEventHandler.receive_send_chat(message)
+
+        self.assertEqual(len(mock.mock_calls), 1)
+
+        # error
+        got: Message[ErrorPayload] = mock.mock_calls[0].args[0]
+        self.assertEqual(type(got), Message)
+        self.assertEqual(got.event, "multicast")
+        # origin_event
+        self.assertIn("origin_event", got.header)
+        self.assertEqual(got.header["origin_event"], ErrorEvent.ERROR)
+        # target_conns 확인, [A]
+        self.assertIn("target_conns", got.header)
+        self.assertEqual(len(got.header["target_conns"]), 1)
+        self.assertIn(self.cur_a.id, got.header["target_conns"])
+        # payload 확인
+        self.assertEqual(type(got.payload), ErrorPayload)
 
 
 if __name__ == "__main__":
