@@ -4,8 +4,10 @@ from message.payload import (
     TilesEvent,
     PointEvent,
     MoveEvent,
+    ChatEvent,
     FetchTilesPayload,
     TilesPayload,
+    SendChatPayload,
     PointingPayload,
     MovingPayload,
     NewConnEvent,
@@ -25,7 +27,8 @@ DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
     TilesEvent.TILES: TilesPayload,
     PointEvent.POINTING: PointingPayload,
     MoveEvent.MOVING: MovingPayload,
-    NewConnEvent.SET_VIEW_SIZE: SetViewSizePayload
+    NewConnEvent.SET_VIEW_SIZE: SetViewSizePayload,
+    ChatEvent.SEND_CHAT: SendChatPayload
 }
 
 
