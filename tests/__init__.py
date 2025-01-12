@@ -8,20 +8,20 @@ if __name__ == "__main__":
     from event.message.test import *
     from event.payload.test import *
 
-    # board
-    from board.data.test import *
-    from board.data.storage.test import *
-    from board.data.handler.test import *
-    from board.event.handler.test import *
+    # data
+    from data.board.test import *
+    from data.conn.test import *
+    from data.cursor.test import *
 
-    # conn
-    from conn.test import *
-    from conn.manager.test import *
+    # handler
+    from handler.board.test import *
+    from handler.board.storage.test import *
+    from handler.cursor.test import *
 
-    # cursor
-    from cursor.data.test import *
-    from cursor.data.handler.test import *
-    from cursor.event.handler.test import *
+    # receiver
+    from receiver.board.test import *
+    from receiver.conn.test import *
+    from receiver.cursor.test import *
 
     try:
         unittest.main()

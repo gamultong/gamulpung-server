@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, patch
 import unittest
-from conn.manager import ConnectionManager
+from receiver.conn import ConnectionManager
 from event.broker.test.utils import clear_records
 from fastapi.testclient import TestClient
 from fastapi.websockets import WebSocketDisconnect
@@ -8,9 +8,9 @@ from fastapi.websockets import WebSocketDisconnect
 from server import app
 from event.message import Message
 from event.payload import FetchTilesPayload, TilesPayload, TilesEvent, NewConnEvent
-from board.data.storage.test.fixtures import setup_board, teardown_board
-from board.event.handler import BoardEventHandler
-from data_layer.board import Point, Tile, Tiles
+from handler.board.storage.test.fixtures import setup_board, teardown_board
+from receiver.board import BoardEventHandler
+from data.board import Point, Tile, Tiles
 from event.broker import EventBroker
 
 

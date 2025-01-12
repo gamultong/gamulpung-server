@@ -1,6 +1,6 @@
 import unittest
 
-from data_layer.board import Point
+from data.board import Point
 from event.payload import FetchTilesPayload, TilesPayload
 from .testdata.tiles_payload_testdata import EXAPLE_FETCH_TILES_DICT, EXAPLE_TILES_DICT
 

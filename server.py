@@ -1,9 +1,9 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
-from conn.manager import ConnectionManager
-from data_layer.board import Section
-from board.event.handler import BoardEventHandler
-from cursor.event.handler import CursorEventHandler
+from receiver.conn import ConnectionManager
+from data.board import Section
+from receiver.board import BoardEventHandler
+from receiver.cursor import CursorEventHandler
 from event.message import Message
 from event.payload import ErrorEvent, ErrorPayload
 from config import VIEW_SIZE_LIMIT

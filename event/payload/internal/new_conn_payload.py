@@ -1,5 +1,5 @@
-from data_layer.board import Point
-from data_layer.cursor import Color
+from data.board import Point
+from data.cursor import Color
 from dataclasses import dataclass
 from .base_payload import Payload
 from .parsable_payload import ParsablePayload

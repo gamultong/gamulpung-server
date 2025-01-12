@@ -1,8 +1,8 @@
 from .parsable_payload import ParsablePayload
 from .base_payload import Payload
-from data_layer.board import Point
+from data.board import Point
 from dataclasses import dataclass
-from data_layer.cursor import Color
+from data.cursor import Color
 from enum import Enum
 
 
