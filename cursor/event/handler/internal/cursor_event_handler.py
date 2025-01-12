@@ -1,11 +1,5 @@
-import asyncio
-from data_layer.cursor import Cursor
-from cursor.data.handler import CursorHandler
-from data_layer.board import Point, Tile, Tiles, Section
-from event import EventBroker
-from message import Message
-from datetime import datetime, timedelta
-from message.payload import (
+from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
+from event.payload import (
     MyCursorPayload,
     CursorsPayload,
     CursorInfoPayload,
@@ -37,7 +31,13 @@ from message.payload import (
     ChatPayload,
     SendChatPayload
 )
-from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
+from datetime import datetime, timedelta
+from event.message import Message
+import asyncio
+from data_layer.cursor import Cursor
+from cursor.data.handler import CursorHandler
+from data_layer.board import Point, Tile, Tiles, Section
+from event.broker import EventBroker
 
 
 class CursorEventHandler:

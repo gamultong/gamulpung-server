@@ -4,8 +4,8 @@ from data_layer.board import Point, Tile, Tiles, Section
 from board.event.handler import BoardEventHandler
 from board.data.handler import BoardHandler
 from board.data.storage.test.fixtures import setup_board
-from message import Message
-from message.payload import (
+from event.message import Message
+from event.payload import (
     FetchTilesPayload,
     TilesEvent,
     TilesPayload,
@@ -60,7 +60,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         await setup_board()
 
     @patch("data_layer.board.Section.create")
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_fetch_tiles_receiver_normal_case(self, mock: AsyncMock, create_mock):
         """
         fetch-tiles-receiver
@@ -136,7 +136,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
 
         self.assertEqual(got.payload.tiles, expected.to_str())
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_fetch_tiles_receiver_malformed_start_end(self, mock: AsyncMock):
         start_p = Point(1, 0)
         end_p = Point(0, -1)
@@ -171,7 +171,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         # message.payload
         self.assertEqual(type(got.payload), ErrorPayload)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_fetch_tiles_receiver_range_exceeded(self, mock: AsyncMock):
         start_p = Point((-VIEW_SIZE_LIMIT/2) // 1, 0)
         end_p = Point((VIEW_SIZE_LIMIT/2) // 1, -1)
@@ -206,7 +206,7 @@ class BoardEventHandler_FetchTilesReceiver_TestCase(unittest.IsolatedAsyncioTest
         # message.payload
         self.assertEqual(type(got.payload), ErrorPayload)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_new_conn(self, mock: AsyncMock):
         conn_id = "ayo"
         width = 1
@@ -261,7 +261,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         await setup_board()
         self.sender_id = "ayo"
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_not_interactable(self, mock: AsyncMock):
         cursor_pos = Point(2, 2)
         pointer = Point(0, 0)
@@ -295,7 +295,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertTrue(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click(self, mock: AsyncMock):
         # TODO: 연쇄 개방에 대한 테스트케이스 추가
 
@@ -352,7 +352,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertEqual(fetched_tile, expected_tile)
         self.assertEqual(got.payload.tile, tiles.to_str())
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click_race(self, mock: AsyncMock):
         cursor_pos = Point(0, 0)
         pointer = Point(1, 0)
@@ -382,7 +382,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         # 첫번째: pointing-result, single-tile-opened 두번째: pointing-result 발행하는지 확인
         self.assertEqual(len(mock.mock_calls), 4)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_closed_general_click_flag(self, mock: AsyncMock):
         cursor_pos = Point(0, 0)
         pointer = Point(1, 1)
@@ -416,7 +416,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertTrue(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_closed_special_click(self, mock: AsyncMock):
         cursor_pos = Point(0, 0)
         pointer = Point(1, 0)
@@ -473,7 +473,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
         self.assertEqual(fetched_tile, expected_tile)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_pointable_closed_special_click_already_flag(self, mock: AsyncMock):
         cursor_pos = Point(0, 0)
         pointer = Point(1, 1)
@@ -530,7 +530,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
 
         self.assertEqual(fetched_tile, expected_tile)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_try_pointing_not_pointable(self, mock: AsyncMock):
         cursor_pos = Point(0, 0)
         pointer = Point(2, 0)
@@ -564,7 +564,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertFalse(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-    @ patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_check_movable_true(self, mock: AsyncMock):
         new_position = Point(0, 0)
         message = Message(
@@ -591,7 +591,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertEqual(got.payload.position, new_position)
         self.assertTrue(got.payload.movable)
 
-    @ patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_check_movable_false(self, mock: AsyncMock):
         new_position = Point(1, 0)
         message = Message(

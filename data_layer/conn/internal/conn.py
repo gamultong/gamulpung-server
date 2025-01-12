@@ -2,7 +2,7 @@ from data_layer.base import DataObj
 
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
-from message import Message
+from event.message import Message
 from dataclasses import dataclass
 
 

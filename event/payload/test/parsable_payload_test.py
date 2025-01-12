@@ -1,5 +1,5 @@
 import unittest
-from message.payload import Payload, ParsablePayload
+from event.payload import Payload, ParsablePayload
 from dataclasses import dataclass
 
 

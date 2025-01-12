@@ -1,12 +1,10 @@
+from datetime import datetime
+from .utils import clear_records
+from event.payload import ErrorEvent, ErrorPayload
+from event.message import Message
 import unittest
 
-from event import EventRecorder
-
-from message import Message
-from message.payload import ErrorEvent, ErrorPayload
-from .utils import clear_records
-
-from datetime import datetime
+from event.broker import EventRecorder
 
 
 class EventRecorderTestCase(unittest.IsolatedAsyncioTestCase):

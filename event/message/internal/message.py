@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar
-from message.payload import (
+from event.payload import (
     Payload,
     TilesEvent,
     PointEvent,

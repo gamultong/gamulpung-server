@@ -1,5 +1,5 @@
-from message import Message, InvalidEventTypeException
-from message.payload import Payload, FetchTilesPayload, TilesPayload
+from event.message import Message, InvalidEventTypeException
+from event.payload import Payload, FetchTilesPayload, TilesPayload
 from .message_testdata import FETCH_TILES_EXAMPLE, INVALID_EVENT_EXAMPLE, TILES_EXAMPLE
 from data_layer.board import Point
 

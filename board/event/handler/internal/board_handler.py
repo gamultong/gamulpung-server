@@ -1,10 +1,5 @@
-import asyncio
-from event import EventBroker
-from data_layer.board import Point, Tile, Tiles, Section
-from board.data.handler import BoardHandler
-from data_layer.cursor import Color
-from message import Message
-from message.payload import (
+from config import VIEW_SIZE_LIMIT
+from event.payload import (
     FetchTilesPayload,
     TilesPayload,
     TilesEvent,
@@ -25,7 +20,12 @@ from message.payload import (
     ErrorEvent,
     ErrorPayload
 )
-from config import VIEW_SIZE_LIMIT
+from event.message import Message
+from data_layer.cursor import Color
+from board.data.handler import BoardHandler
+from data_layer.board import Point, Tile, Tiles, Section
+import asyncio
+from event.broker import EventBroker
 
 
 class BoardEventHandler():

@@ -4,8 +4,8 @@ from datetime import datetime
 from data_layer.cursor import Cursor, Color
 from cursor.data.handler import CursorHandler
 from cursor.event.handler import CursorEventHandler
-from message import Message
-from message.payload import (
+from event.message import Message
+from event.payload import (
     NewConnEvent,
     MyCursorPayload,
     CursorsPayload,
@@ -70,7 +70,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_new_cursor_candidate_receive_without_cursors(self, mock: AsyncMock):
         """
         new-cursor-candidate-receiver
@@ -156,7 +156,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(got.payload.position, position)
         self.assertIn(got.payload.color, Color)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_new_cursor_candidate_receive_without_cursors_race(self, mock: AsyncMock):
         conn_1 = "1"
         conn_2 = "2"
@@ -185,7 +185,7 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         # 첫번째 conn: my-cursor, 두번째 conn: my-cursor, cursors * 2
         self.assertEqual(len(mock.mock_calls), 4)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_new_cursor_candidate_with_cursors(self, mock: AsyncMock):
         # /docs/example/cursor-location.png
         # But B is at 0,0
@@ -316,7 +316,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_pointing(self, mock: AsyncMock):
         click_type = ClickType.GENERAL_CLICK
         pointer = Point(0, 0)
@@ -350,7 +350,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         self.assertEqual(got.payload.cursor_position, self.cur_a.position)
         self.assertEqual(got.payload.new_pointer, pointer)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_pointing_out_of_bound(self, mock: AsyncMock):
         click_type = ClickType.GENERAL_CLICK
         pointer = Point(100, 0)
@@ -385,7 +385,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
         self.assertEqual(type(got.payload), ErrorPayload)
         self.assertEqual(got.payload.msg, "pointer is out of cursor view")
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_pointing_dead(self, mock: AsyncMock):
         from datetime import datetime
         self.cur_a.revive_at = datetime(year=2200, month=1, day=1, hour=0, minute=0, second=0)
@@ -406,7 +406,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         mock.assert_not_called()
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_pointing_result_pointable(self, mock: AsyncMock):
         origin_pointer = self.cur_a.pointer
         pointer = Point(1, 0)
@@ -444,7 +444,7 @@ class CursorEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestC
 
         self.assertEqual(self.cur_a.pointer, pointer)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_pointing_result_pointable_no_original_pointer(self, mock: AsyncMock):
         pointer = Point(1, 0)
         message = Message(
@@ -492,7 +492,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_moving(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
@@ -523,7 +523,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(type(got.payload), CheckMovablePayload)
         self.assertEqual(got.payload.position, message.payload.position)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_moving_same_position(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
@@ -554,7 +554,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(type(got.payload), ErrorPayload)
         self.assertEqual(got.payload.msg, "moving to current position is not allowed")
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_moving_out_of_bounds(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVING,
@@ -588,7 +588,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(type(got.payload), ErrorPayload)
         self.assertEqual(got.payload.msg, "only moving to 8 nearby tiles is allowed")
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_movable_result_not_movable(self, mock: AsyncMock):
         message = Message(
             event=MoveEvent.MOVABLE_RESULT,
@@ -620,7 +620,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(type(got.payload), ErrorPayload)
         self.assertEqual(got.payload.msg, "moving to given tile is not available")
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_movable_result_a_up(self, mock: AsyncMock):
         """
         A가 한 칸 위로 이동.
@@ -672,7 +672,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(len(b_watchings), 1)
         self.assertIn("C", b_watchings)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_movable_result_b_up_right(self, mock: AsyncMock):
         """
         B가 한 칸 위, 한 칸 오른쪽로 이동.
@@ -731,7 +731,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(len(c_watchings), 1)
         self.assertIn("B", c_watchings)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_movable_result_c_left(self, mock: AsyncMock):
         """
         C가 한 칸 왼쪽으로 이동.
@@ -801,7 +801,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertIn("A", c_watchings)
         self.assertIn("B", c_watchings)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_movable_result_b_down(self, mock: AsyncMock):
         """
         B가 한 칸 아래로 이동.
@@ -841,7 +841,7 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_flag_set(self, mock: AsyncMock):
         position = Point(-4, -3)
         color = Color.BLUE
@@ -879,7 +879,7 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         self.assertEqual(got.payload.color, color)
         self.assertEqual(got.payload.is_set, is_set)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_single_tile_open(self, mock: AsyncMock):
         self.cur_b.pointer = Point(1, 1)
 
@@ -957,7 +957,7 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
 
         self.assertIsNone(self.cur_b.pointer)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_single_tile_open_mine_explode_already_died(self, mock: AsyncMock):
         self.cur_b.pointer = Point(1, 1)
         self.cur_b.revive_at = datetime(year=2200, month=1, day=1)
@@ -996,7 +996,7 @@ class CursorEventHandler_TileStateChanged_TestCase(unittest.IsolatedAsyncioTestC
         self.assertEqual(got.payload.position, position)
         self.assertEqual(bytearray.fromhex(got.payload.tile)[0], tile.data)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_tiles_opened(self, mock: AsyncMock):
         start = Point(-3, 1)
         end = Point(-2, 0)
@@ -1048,7 +1048,7 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_conn_closed(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.CONN_CLOSED,
@@ -1100,7 +1100,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_set_view_size_grow_shrink_both(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
@@ -1143,7 +1143,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(b_watchers), 1)
         self.assertIn("A", b_watchers)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_set_view_size_same(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
@@ -1166,7 +1166,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         b_watchers = CursorHandler.get_watchers("B")
         self.assertEqual(len(b_watchers), 0)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_set_view_size_exceed_limit(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
@@ -1195,7 +1195,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # payload 확인
         self.assertEqual(type(got.payload), ErrorPayload)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_set_view_size_0(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
@@ -1224,7 +1224,7 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         # payload 확인
         self.assertEqual(type(got.payload), ErrorPayload)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_set_view_size_shrink(self, mock: AsyncMock):
         message = Message(
             event=NewConnEvent.SET_VIEW_SIZE,
@@ -1260,7 +1260,7 @@ class CursorEventHandler_Chat_TestCase(unittest.IsolatedAsyncioTestCase):
         CursorHandler.watchers = {}
         CursorHandler.watching = {}
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_send_chat(self, mock: AsyncMock):
         content = "test"
 
@@ -1291,7 +1291,7 @@ class CursorEventHandler_Chat_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(got.payload.cursor_id, self.cur_a.id)
         self.assertEqual(got.payload.message, content)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_send_chat_length_exceeded(self, mock: AsyncMock):
         content = "a" * (CHAT_MAX_LENGTH+1)
 

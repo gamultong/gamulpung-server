@@ -1,4 +1,4 @@
-from message.payload import Payload, InvalidFieldException, MissingFieldException
+from event.payload import Payload, InvalidFieldException, MissingFieldException
 from dataclasses import dataclass
 from enum import Enum
 

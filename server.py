@@ -4,8 +4,8 @@ from conn.manager import ConnectionManager
 from data_layer.board import Section
 from board.event.handler import BoardEventHandler
 from cursor.event.handler import CursorEventHandler
-from message import Message
-from message.payload import ErrorEvent, ErrorPayload
+from event.message import Message
+from event.payload import ErrorEvent, ErrorPayload
 from config import VIEW_SIZE_LIMIT
 
 app = FastAPI()

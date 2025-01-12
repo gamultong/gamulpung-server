@@ -1,4 +1,4 @@
-from message import Message
+from event.message import Message
 from db import db
 from datetime import datetime
 import asyncio

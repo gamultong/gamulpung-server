@@ -1,18 +1,17 @@
+from unittest.mock import AsyncMock, patch
+import unittest
+from conn.manager import ConnectionManager
+from event.broker.test.utils import clear_records
 from fastapi.testclient import TestClient
 from fastapi.websockets import WebSocketDisconnect
 
 from server import app
-from message import Message
-from message.payload import FetchTilesPayload, TilesPayload, TilesEvent, NewConnEvent
+from event.message import Message
+from event.payload import FetchTilesPayload, TilesPayload, TilesEvent, NewConnEvent
 from board.data.storage.test.fixtures import setup_board, teardown_board
 from board.event.handler import BoardEventHandler
 from data_layer.board import Point, Tile, Tiles
-from event import EventBroker
-from event.test.utils import clear_records
-from conn.manager import ConnectionManager
-
-import unittest
-from unittest.mock import AsyncMock, patch
+from event.broker import EventBroker
 
 
 class ServerTestCase(unittest.IsolatedAsyncioTestCase):
@@ -36,7 +35,7 @@ class ServerTestCase(unittest.IsolatedAsyncioTestCase):
             with self.client.websocket_connect("/session?view_width=hello") as websocket:
                 websocket.close()
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     def test_fetch_tiles(self, mock: AsyncMock):
         async def filter_tiles_event(message: Message):
             match (message.event):

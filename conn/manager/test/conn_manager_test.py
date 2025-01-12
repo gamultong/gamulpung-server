@@ -1,18 +1,17 @@
+import asyncio
+from data_layer.board import Point
+from conn.test.fixtures import create_connection_mock
 import unittest
 import uuid
 
 from unittest.mock import AsyncMock, patch
 from data_layer.conn import Conn
 from conn.manager import ConnectionManager
-from message import Message
-from message.payload import (
+from event.message import Message
+from event.payload import (
     TilesPayload, NewConnEvent, NewConnPayload, ConnClosedPayload
 )
-from event import EventBroker
-from conn.test.fixtures import create_connection_mock
-from data_layer.board import Point
-
-import asyncio
+from event.broker import EventBroker
 
 
 class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
@@ -26,7 +25,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         ConnectionManager.conns = {}
         ConnectionManager.limiter.storage.reset()
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_add(self, mock: AsyncMock):
 
         width = 1
@@ -55,7 +54,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(ConnectionManager.get_conn(valid_id))
         self.assertIsNone(ConnectionManager.get_conn(invalid_id))
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_generate_conn_id(self, mock: AsyncMock):
         n_conns = 5
 
@@ -71,7 +70,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
             # UUID 포맷인지 확인. 아니면 ValueError
             uuid.UUID(id)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_close(self, mock: AsyncMock):
         conn_id = "ayo"
         conn = Conn.create(conn_id, self.con1)
@@ -87,7 +86,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(got.event, NewConnEvent.CONN_CLOSED)
         self.assertEqual(type(got.payload), ConnClosedPayload)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_broadcast_event(self, mock: AsyncMock):
         _ = await ConnectionManager.add(self.con1, 1, 1)
         _ = await ConnectionManager.add(self.con2, 1, 1)
@@ -117,7 +116,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected.to_str(), got3)
         self.assertEqual(expected.to_str(), got4)
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_receive_multicast_event(self, mock: AsyncMock):
         con1 = await ConnectionManager.add(self.con1, 1, 1)
         con2 = await ConnectionManager.add(self.con2, 1, 1)
@@ -169,7 +168,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(got.header["sender"], conn_id)
         self.assertEqual(got.to_str(), message.to_str())
 
-    @patch("event.EventBroker.publish")
+    @patch("event.broker.EventBroker.publish")
     async def test_publish_client_event_rate_limit_exceeded(self, mock: AsyncMock):
         conn = await ConnectionManager.add(conn=self.con1, width=1, height=1)
 

@@ -1,6 +1,6 @@
 from .testdata.base_payload_testdata import \
     ExamplePayload, ExampleWrapperPayload, EXCEPTION_TEST_CASES, EXAMPLE_PAYLOAD_DICT, EXAMPLE_PAYLOAD_WRAPPED_DICT
-from message.payload import InvalidFieldException, MissingFieldException
+from event.payload import InvalidFieldException, MissingFieldException
 from tests.utils import cases
 
 import unittest

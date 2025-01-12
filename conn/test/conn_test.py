@@ -2,9 +2,9 @@ import unittest
 
 from .fixtures import create_connection_mock
 from dataclasses import dataclass
-from message.payload import Payload
-from message import Message
-from message.internal.message import DECODABLE_PAYLOAD_DICT
+from event.payload import Payload
+from event.message import Message
+from event.message import DECODABLE_PAYLOAD_DICT
 from data_layer.conn import Conn
 
 

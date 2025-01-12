@@ -1,9 +1,9 @@
 from __future__ import annotations
 import asyncio
 from typing import Callable, Generic
-from message import Message
+from event.message import Message
+from event.message.internal.message import EVENT_TYPE
 from .exceptions import NoMatchingReceiverException
-from message.internal.message import EVENT_TYPE
 from uuid import uuid4
 from datetime import datetime
 

@@ -1,11 +1,12 @@
 if __name__ == "__main__":
     import unittest
     # message
-    from message.test import *
-    from message.payload.test import *
+    from event.payload.test import *
 
     # event
-    from event.test import *
+    from event.broker.test import *
+    from event.message.test import *
+    from event.payload.test import *
 
     # board
     from board.data.test import *
