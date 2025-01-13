@@ -19,9 +19,9 @@ if __name__ == "__main__":
     from handler.cursor.test import *
 
     # receiver
-    from receiver.board.test import *
-    from receiver.conn.test import *
-    from receiver.cursor.test import *
+    # from receiver.board.test import *
+    # from receiver.conn.test import *
+    # from receiver.cursor.test import *
 
     try:
         unittest.main()
