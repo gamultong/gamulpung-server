@@ -11,13 +11,65 @@ from handler.cursor import CursorHandler
 
 from data.board import Point
 from data.cursor import Cursor
-from dataclasses import dataclass
-import asyncio
 
 # 1. 커서 포지션 선정
-# 3. 커서 만든 후 보내기
-# 2. 타일 보내기
-# 4. 커서간 연관관계 설정 후 보내기
+# 2. 커서 만든 후 보내기
+# 3. 커서간 연관관계 설정 후 보내기
+# 4. 타일 보내기
+
+
+class NewConnReceiver():
+    @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
+    @staticmethod
+    async def receive_new_conn(message: Message[NewConnPayload]):
+        cursor = await new_cursor(message.payload)
+
+        start, end = get_view_point(cursor)
+
+        await multicast(
+            target_conns=[cursor.id],
+            message=Message(
+                event=NewConnEvent.MY_CURSOR,
+                payload=MyCursorPayload(
+                    id=cursor.id,
+                    position=cursor.position,
+                    pointer=cursor.pointer,
+                    color=cursor.color
+                )
+            )
+        )
+
+        cursors_in_view = fetch_cursors_in_view(cursor)
+        if len(cursors_in_view) > 0:
+            watch(watchers=[cursor], watchings=cursors_in_view)
+
+            await publish_new_cursors(
+                target_cursors=[cursor],
+                cursors=cursors_in_view
+            )
+
+        cursors_with_view_including = fetch_with_view_including(cursor)
+        if len(cursors_with_view_including) > 0:
+            watch(watchers=cursors_with_view_including, watchings=[cursor])
+
+            await publish_new_cursors(
+                target_cursors=cursors_with_view_including,
+                cursors=[cursor]
+            )
+
+        tiles = await fetch_tiles(start, end)
+
+        await multicast(
+            target_conns=[cursor.id],
+            message=Message(
+                event=TilesEvent.TILES,
+                payload=TilesPayload(
+                    start_p=start,
+                    end_p=end,
+                    tiles=tiles.to_str()
+                )
+            )
+        )
 
 
 async def new_cursor(payload: NewConnPayload):
@@ -67,62 +119,6 @@ async def multicast(target_conns: list[str], message: Message):
             payload=message.payload
         )
     )
-
-
-class NewConnReceiver():
-
-    @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
-    @staticmethod
-    async def receive_new_conn(message: Message[NewConnPayload]):
-        # 새로운 커서 만들기
-        cursor = await new_cursor(message.payload)
-
-        start, end = get_view_point(cursor)
-
-        await multicast(
-            target_conns=[cursor.id],
-            message=Message(
-                event=NewConnEvent.MY_CURSOR,
-                payload=MyCursorPayload(
-                    id=cursor.id,
-                    position=cursor.position,
-                    pointer=cursor.pointer,
-                    color=cursor.color
-                )
-            )
-        )
-
-        cursors_in_view = fetch_cursors_in_view(cursor)
-        if len(cursors_in_view) > 0:
-            watch(watchers=[cursor], watchings=cursors_in_view)
-
-            await publish_new_cursors(
-                target_cursors=[cursor],
-                cursors=cursors_in_view
-            )
-
-        cursors_with_view_including = fetch_with_view_including(cursor)
-        if len(cursors_with_view_including) > 0:
-            watch(watchers=cursors_with_view_including, watchings=[cursor])
-
-            await publish_new_cursors(
-                target_cursors=cursors_with_view_including,
-                cursors=[cursor]
-            )
-
-        tiles = await fetch_tiles(start, end)
-
-        await multicast(
-            target_conns=[cursor.id],
-            message=Message(
-                event=TilesEvent.TILES,
-                payload=TilesPayload(
-                    start_p=start,
-                    end_p=end,
-                    tiles=tiles.to_str()
-                )
-            )
-        )
 
 
 def fetch_with_view_including(cursor: Cursor) -> list[Cursor]:
