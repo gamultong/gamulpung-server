@@ -1,9 +1,8 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import (
-    MoveEvent, MovingPayload, MovedPayload,
-    ErrorEvent, ErrorPayload,
-    NewConnEvent, CursorsPayload, CursorReviveAtPayload
+from data.payload import (
+    EventEnum, MovingPayload, MovedPayload, ErrorPayload,
+    CursorsPayload, CursorReviveAtPayload
 )
 
 from handler.board import BoardHandler
@@ -16,13 +15,13 @@ from data.cursor import Cursor
 async def validate_new_position(cursor: Cursor, new_position: Point) -> Message | None:
     if new_position == cursor.position:
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="moving to current position is not allowed")
         )
 
     if not cursor.check_interactable(new_position):
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="only moving to 8 nearby tiles is allowed")
         )
 
@@ -30,13 +29,13 @@ async def validate_new_position(cursor: Cursor, new_position: Point) -> Message 
     tile = Tile.from_int(tiles.data[0])
     if not tile.is_open:
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="moving to closed tile is not available")
         )
 
 
 class MovingReceiver():
-    @EventBroker.add_receiver(MoveEvent.MOVING)
+    @EventBroker.add_receiver(EventEnum.MOVING)
     @staticmethod
     async def receive_moving(message: Message[MovingPayload]):
         sender = message.header["sender"]
@@ -89,7 +88,7 @@ class MovingReceiver():
             multicast(
                 target_conns=original_watchers,
                 message=Message(
-                    event=MoveEvent.MOVED,
+                    event=EventEnum.MOVED,
                     payload=MovedPayload(
                         id=cursor.id,
                         new_position=position
@@ -156,7 +155,7 @@ def find_cursors_to_unwatch(cursor: Cursor) -> list[Cursor]:
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
     message = Message(
-        event=NewConnEvent.CURSORS,
+        event=EventEnum.CURSORS,
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
                 id=cursor.id,
