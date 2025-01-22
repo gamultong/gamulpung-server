@@ -1,8 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import (
-    NewConnEvent, SetViewSizePayload,
-    ErrorEvent, ErrorPayload,
+from data.payload import (
+    EventEnum, SetViewSizePayload, ErrorPayload,
     CursorsPayload, CursorReviveAtPayload
 )
 
@@ -15,7 +14,7 @@ from config import VIEW_SIZE_LIMIT
 
 
 class SetViewSizeReceiver():
-    @EventBroker.add_receiver(NewConnEvent.SET_VIEW_SIZE)
+    @EventBroker.add_receiver(EventEnum.SET_VIEW_SIZE)
     @staticmethod
     async def receive_set_view_size(message: Message[SetViewSizePayload]):
         sender = message.header["sender"]
@@ -81,7 +80,7 @@ def validate_view_size(cursor: Cursor, new_width: int, new_height: int):
     if new_width == cursor.width and new_height == cursor.height:
         # 변동 없음
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg=f"view size is same as current size")
         )
 
@@ -89,7 +88,7 @@ def validate_view_size(cursor: Cursor, new_width: int, new_height: int):
             new_width > VIEW_SIZE_LIMIT or new_height > VIEW_SIZE_LIMIT:
         # 뷰 범위 한계 넘음
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
         )
 
@@ -121,7 +120,7 @@ def unwatch(wachers: list[Cursor], watchings: list[Cursor]):
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
     message = Message(
-        event=NewConnEvent.CURSORS,
+        event=EventEnum.CURSORS,
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
                 id=cursor.id,

@@ -1,8 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import (
-    TilesEvent, FetchTilesPayload, TilesPayload,
-    ErrorEvent, ErrorPayload
+from data.payload import (
+    EventEnum, FetchTilesPayload, TilesPayload, ErrorPayload
 )
 
 from handler.board import BoardHandler
@@ -16,7 +15,7 @@ def validate_fetch_range(start: Point, end: Point):
     # start_p: 좌상, end_p: 우하 확인
     if start.x > end.x or start.y < end.y:
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
         )
 
@@ -24,7 +23,7 @@ def validate_fetch_range(start: Point, end: Point):
     x_gap, y_gap = (end.x - start.x + 1), (start.y - end.y + 1)
     if x_gap > VIEW_SIZE_LIMIT or y_gap > VIEW_SIZE_LIMIT:
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
         )
 
@@ -32,7 +31,7 @@ def validate_fetch_range(start: Point, end: Point):
 
 
 class FetchTilesReceiver:
-    @EventBroker.add_receiver(TilesEvent.FETCH_TILES)
+    @EventBroker.add_receiver(EventEnum.FETCH_TILES)
     @staticmethod
     async def receive_fetch_tiles(message: Message[FetchTilesPayload]):
         sender = message.header["sender"]
@@ -52,7 +51,7 @@ class FetchTilesReceiver:
         await multicast(
             target_conns=[sender],
             message=Message(
-                event=TilesEvent.TILES,
+                event=EventEnum.TILES,
                 payload=TilesPayload(
                     start_p=start,
                     end_p=end,

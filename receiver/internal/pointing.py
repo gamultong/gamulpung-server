@@ -1,9 +1,9 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import (
-    PointEvent, PointingPayload, PointerSetPayload, ClickType,
-    ErrorEvent, ErrorPayload,
-    InteractionEvent, FlagSetPayload, SingleTileOpenedPayload, TilesOpenedPayload,
+from data.payload import (
+    EventEnum, ClickType, ErrorPayload,
+    PointingPayload, PointerSetPayload,
+    FlagSetPayload, SingleTileOpenedPayload, TilesOpenedPayload,
     YouDiedPayload, CursorsDiedPayload, CursorInfoPayload
 )
 
@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 
 
 class PointingReceiver():
-    @EventBroker.add_receiver(PointEvent.POINTING)
+    @EventBroker.add_receiver(EventEnum.POINTING)
     @staticmethod
     async def receive_pointing(message: Message[PointingPayload]):
         sender = message.header["sender"]
@@ -38,7 +38,7 @@ class PointingReceiver():
             await multicast(
                 target_conns=[cursor.id] + watchers,
                 message=Message(
-                    event=PointEvent.POINTER_SET,
+                    event=EventEnum.POINTER_SET,
                     payload=PointerSetPayload(
                         id=cursor.id,
                         pointer=cursor.pointer
@@ -67,14 +67,14 @@ class PointingReceiver():
 def validate_pointable(cursor: Cursor, point: Point):
     if cursor.revive_at is not None:
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="dead cursor cannot do pointing")
         )
 
     # 뷰 바운더리 안에서 포인팅하는지 확인
     if not cursor.check_in_view(point):
         return Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             payload=ErrorPayload(msg="pointer is out of cursor view")
         )
 
@@ -95,7 +95,7 @@ async def general_click(cursor: Cursor, tile: Tile):
             await multicast(
                 target_conns=[c.id for c in view_cursors],
                 message=Message(
-                    event=InteractionEvent.TILES_OPENED,
+                    event=EventEnum.TILES_OPENED,
                     payload=TilesOpenedPayload(
                         start_p=start_p,
                         end_p=end_p,
@@ -112,7 +112,7 @@ async def general_click(cursor: Cursor, tile: Tile):
             await multicast(
                 target_conns=[c.id for c in view_cursors],
                 message=Message(
-                    event=InteractionEvent.SINGLE_TILE_OPENED,
+                    event=EventEnum.SINGLE_TILE_OPENED,
                     payload=SingleTileOpenedPayload(
                         position=cursor.pointer,
                         tile=Tiles(data=bytearray([tile.data])).to_str()
@@ -138,7 +138,7 @@ async def general_click(cursor: Cursor, tile: Tile):
             await multicast(
                 target_conns=[c.id for c in nearby_cursors],
                 message=Message(
-                    event=InteractionEvent.YOU_DIED,
+                    event=EventEnum.YOU_DIED,
                     payload=YouDiedPayload(revive_at=revive_at.astimezone().isoformat())
                 )
             )
@@ -153,7 +153,7 @@ async def general_click(cursor: Cursor, tile: Tile):
                 await multicast(
                     target_conns=watcher_ids,
                     message=Message(
-                        event=InteractionEvent.CURSORS_DIED,
+                        event=EventEnum.CURSORS_DIED,
                         payload=CursorsDiedPayload(
                             revive_at=revive_at.astimezone().isoformat(),
                             cursors=[CursorInfoPayload(
@@ -186,7 +186,7 @@ async def special_click(cursor: Cursor, tile: Tile):
         await multicast(
             target_conns=[c.id for c in view_cursors],
             message=Message(
-                event=InteractionEvent.FLAG_SET,
+                event=EventEnum.FLAG_SET,
                 payload=FlagSetPayload(
                     position=pointer,
                     is_set=flag_state,

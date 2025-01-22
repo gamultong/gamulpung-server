@@ -1,9 +1,8 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import (
-    NewConnEvent, NewConnPayload,
-    MyCursorPayload, CursorsPayload, CursorReviveAtPayload,
-    TilesEvent, TilesPayload
+from data.payload import (
+    EventEnum, NewConnPayload,
+    MyCursorPayload, CursorsPayload, CursorReviveAtPayload, TilesPayload
 )
 
 from handler.board import BoardHandler
@@ -19,7 +18,7 @@ from data.cursor import Cursor
 
 
 class NewConnReceiver():
-    @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
+    @EventBroker.add_receiver(EventEnum.NEW_CONN)
     @staticmethod
     async def receive_new_conn(message: Message[NewConnPayload]):
         cursor = await new_cursor(message.payload)
@@ -29,7 +28,7 @@ class NewConnReceiver():
         await multicast(
             target_conns=[cursor.id],
             message=Message(
-                event=NewConnEvent.MY_CURSOR,
+                event=EventEnum.MY_CURSOR,
                 payload=MyCursorPayload(
                     id=cursor.id,
                     position=cursor.position,
@@ -62,7 +61,7 @@ class NewConnReceiver():
         await multicast(
             target_conns=[cursor.id],
             message=Message(
-                event=TilesEvent.TILES,
+                event=EventEnum.TILES,
                 payload=TilesPayload(
                     start_p=start,
                     end_p=end,
@@ -143,7 +142,7 @@ def watch(wachers: list[Cursor], watchings: list[Cursor]):
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
     message = Message(
-        event=NewConnEvent.CURSORS,
+        event=EventEnum.CURSORS,
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
                 id=cursor.id,
