@@ -64,41 +64,6 @@ class BoardEventHandler():
 
         await BoardEventHandler._publish_tiles(start_p, end_p, [sender])
 
-    @EventBroker.add_receiver(NewConnEvent.NEW_CONN)
-    @staticmethod
-    async def receive_new_conn(message: Message[NewConnPayload]):
-        sender = message.payload.conn_id
-
-        width = message.payload.width
-        height = message.payload.height
-
-        # 커서의 위치
-        position = await BoardHandler.get_random_open_position()
-
-        start_p = Point(
-            x=position.x - width,
-            y=position.y + height
-        )
-        end_p = Point(
-            x=position.x+width,
-            y=position.y-height
-        )
-        publish_tiles = BoardEventHandler._publish_tiles(start_p, end_p, [sender])
-
-        message = Message(
-            event=NewConnEvent.NEW_CURSOR_CANDIDATE,
-            payload=NewCursorCandidatePayload(
-                conn_id=message.payload.conn_id,
-                width=width, height=height,
-                position=position
-            )
-        )
-
-        await asyncio.gather(
-            publish_tiles,
-            EventBroker.publish(message)
-        )
-
     @staticmethod
     async def _publish_tiles(start: Point, end: Point, to: list[str]):
         tiles = await BoardHandler.fetch(start, end)
@@ -227,26 +192,3 @@ class BoardEventHandler():
                 publish_coroutines.append(EventBroker.publish(pub_message))
 
         await asyncio.gather(*publish_coroutines)
-
-    @EventBroker.add_receiver(MoveEvent.CHECK_MOVABLE)
-    @staticmethod
-    async def receive_check_movable(message: Message[CheckMovablePayload]):
-        sender = message.header["sender"]
-
-        position = message.payload.position
-
-        tiles = await BoardHandler.fetch(start=position, end=position)
-        tile = Tile.from_int(tiles.data[0])
-
-        movable = tile.is_open
-
-        message = Message(
-            event=MoveEvent.MOVABLE_RESULT,
-            header={"receiver": sender},
-            payload=MovableResultPayload(
-                position=position,
-                movable=movable
-            )
-        )
-
-        await EventBroker.publish(message)
