@@ -1,8 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, MovingPayload, MovedPayload, ErrorPayload,
-    CursorsPayload, CursorReviveAtPayload
+    EventEnum, MovingPayload, MovedPayload, ErrorPayload
 )
 
 from handler.board import BoardHandler
@@ -11,27 +10,10 @@ from handler.cursor import CursorHandler
 from data.board import Point, Tile
 from data.cursor import Cursor
 
-
-async def validate_new_position(cursor: Cursor, new_position: Point) -> Message | None:
-    if new_position == cursor.position:
-        return Message(
-            event=EventEnum.ERROR,
-            payload=ErrorPayload(msg="moving to current position is not allowed")
-        )
-
-    if not cursor.check_interactable(new_position):
-        return Message(
-            event=EventEnum.ERROR,
-            payload=ErrorPayload(msg="only moving to 8 nearby tiles is allowed")
-        )
-
-    tiles = await BoardHandler.fetch(start=new_position, end=new_position)
-    tile = Tile.from_int(tiles.data[0])
-    if not tile.is_open:
-        return Message(
-            event=EventEnum.ERROR,
-            payload=ErrorPayload(msg="moving to closed tile is not available")
-        )
+from .utils import (
+    multicast, watch, unwatch, get_view_range_points,
+    publish_new_cursors, find_cursors_to_unwatch
+)
 
 
 class MovingReceiver():
@@ -106,68 +88,23 @@ class MovingReceiver():
             await publish_new_cursors(target_cursors=new_watchers, cursors=[cursor])
 
 
-async def multicast(target_conns: list[str], message: Message):
-    await EventBroker.publish(
-        message=Message(
-            event="multicast",
-            header={
-                "target_conns": target_conns,
-                "origin_event": message.event
-            },
-            payload=message.payload
+async def validate_new_position(cursor: Cursor, new_position: Point) -> Message | None:
+    if new_position == cursor.position:
+        return Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg="moving to current position is not allowed")
         )
-    )
 
-
-def watch(wachers: list[Cursor], watchings: list[Cursor]):
-    for wacher in wachers:
-        for waching in watchings:
-            CursorHandler.add_watcher(watcher=wacher, watching=waching)
-
-
-def unwatch(wachers: list[Cursor], watchings: list[Cursor]):
-    for wacher in wachers:
-        for waching in watchings:
-            CursorHandler.remove_watcher(watcher=wacher, watching=waching)
-
-
-def get_view_range_points(postion: Point, width: int, height: int):
-    top_left = Point(x=postion.x - width, y=postion.y + height)
-    bottom_right = Point(x=postion.x + width, y=postion.y - height)
-    return top_left, bottom_right
-
-
-def find_cursors_to_unwatch(cursor: Cursor) -> list[Cursor]:
-    def get_if_in_view(cursor_id: str) -> Cursor | None:
-        other_cursor = CursorHandler.get_cursor(cursor_id)
-        if cursor.check_in_view(other_cursor.position):
-            return None
-        return other_cursor
-
-    cur_watching = CursorHandler.get_watching(cursor_id=cursor.id)
-
-    return [
-        cursor
-        for id in cur_watching
-        if (cursor := get_if_in_view(id))
-    ]
-
-
-async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
-    message = Message(
-        event=EventEnum.CURSORS,
-        payload=CursorsPayload(
-            cursors=[CursorReviveAtPayload(
-                id=cursor.id,
-                position=cursor.position,
-                pointer=cursor.pointer,
-                color=cursor.color,
-                revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None
-            ) for cursor in cursors]
+    if not cursor.check_interactable(new_position):
+        return Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg="only moving to 8 nearby tiles is allowed")
         )
-    )
 
-    await multicast(
-        target_conns=[cursor.id for cursor in target_cursors],
-        message=message
-    )
+    tiles = await BoardHandler.fetch(start=new_position, end=new_position)
+    tile = Tile.from_int(tiles.data[0])
+    if not tile.is_open:
+        return Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg="moving to closed tile is not available")
+        )

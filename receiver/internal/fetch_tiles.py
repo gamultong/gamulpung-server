@@ -5,29 +5,11 @@ from data.payload import (
 )
 
 from handler.board import BoardHandler
-
 from data.board import Point
 
 from config import VIEW_SIZE_LIMIT
 
-
-def validate_fetch_range(start: Point, end: Point):
-    # start_p: 좌상, end_p: 우하 확인
-    if start.x > end.x or start.y < end.y:
-        return Message(
-            event=EventEnum.ERROR,
-            payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
-        )
-
-    # start_p와 end_p 차이 확인
-    x_gap, y_gap = (end.x - start.x + 1), (start.y - end.y + 1)
-    if x_gap > VIEW_SIZE_LIMIT or y_gap > VIEW_SIZE_LIMIT:
-        return Message(
-            event=EventEnum.ERROR,
-            payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
-        )
-
-    return None
+from .utils import multicast
 
 
 class FetchTilesReceiver:
@@ -61,21 +43,27 @@ class FetchTilesReceiver:
         )
 
 
+def validate_fetch_range(start: Point, end: Point):
+    # start_p: 좌상, end_p: 우하 확인
+    if start.x > end.x or start.y < end.y:
+        return Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
+        )
+
+    # start_p와 end_p 갭 limit 확인
+    x_gap, y_gap = (end.x - start.x + 1), (start.y - end.y + 1)
+    if x_gap > VIEW_SIZE_LIMIT or y_gap > VIEW_SIZE_LIMIT:
+        return Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
+        )
+
+    return None
+
+
 async def fetch_tiles(start: Point, end: Point):
     tiles = await BoardHandler.fetch(start, end)
     tiles.hide_info()
 
     return tiles
-
-
-async def multicast(target_conns: list[str], message: Message):
-    await EventBroker.publish(
-        message=Message(
-            event="multicast",
-            header={
-                "target_conns": target_conns,
-                "origin_event": message.event
-            },
-            payload=message.payload
-        )
-    )

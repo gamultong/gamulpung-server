@@ -2,7 +2,7 @@ from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
     EventEnum, NewConnPayload,
-    MyCursorPayload, CursorsPayload, CursorReviveAtPayload, TilesPayload
+    MyCursorPayload, TilesPayload
 )
 
 from handler.board import BoardHandler
@@ -10,6 +10,10 @@ from handler.cursor import CursorHandler
 
 from data.board import Point
 from data.cursor import Cursor
+
+from .utils import (
+    multicast, watch, get_view_range_points, publish_new_cursors
+)
 
 # 1. 커서 포지션 선정
 # 2. 커서 만든 후 보내기
@@ -23,7 +27,7 @@ class NewConnReceiver():
     async def receive_new_conn(message: Message[NewConnPayload]):
         cursor = await new_cursor(message.payload)
 
-        start, end = get_view_point(cursor)
+        start, end = get_view_range_points(cursor.position, cursor.width, cursor.height)
 
         await multicast(
             target_conns=[cursor.id],
@@ -87,37 +91,11 @@ async def new_cursor(payload: NewConnPayload):
     return cursor
 
 
-def get_view_point(cursor: Cursor):
-    start = Point(
-        x=cursor.position.x - cursor.width,
-        y=cursor.position.y + cursor.height
-    )
-    end = Point(
-        x=cursor.position.x + cursor.width,
-        y=cursor.position.y - cursor.height
-    )
-
-    return start, end
-
-
 async def fetch_tiles(start: Point, end: Point):
     tiles = await BoardHandler.fetch(start, end)
     tiles.hide_info()
 
     return tiles
-
-
-async def multicast(target_conns: list[str], message: Message):
-    await EventBroker.publish(
-        message=Message(
-            event="multicast",
-            header={
-                "target_conns": target_conns,
-                "origin_event": message.event
-            },
-            payload=message.payload
-        )
-    )
 
 
 def fetch_with_view_including(cursor: Cursor) -> list[Cursor]:
@@ -127,34 +105,8 @@ def fetch_with_view_including(cursor: Cursor) -> list[Cursor]:
 
 
 def fetch_cursors_in_view(cursor: Cursor) -> list[Cursor]:
-    start, end = get_view_point(cursor)
+    start, end = get_view_range_points(cursor.position, cursor.width, cursor.height)
 
     cursors_in_view = CursorHandler.exists_range(start=start, end=end, exclude_ids=[cursor.id])
 
     return cursors_in_view
-
-
-def watch(wachers: list[Cursor], watchings: list[Cursor]):
-    for wacher in wachers:
-        for waching in watchings:
-            CursorHandler.add_watcher(watcher=wacher, watching=waching)
-
-
-async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
-    message = Message(
-        event=EventEnum.CURSORS,
-        payload=CursorsPayload(
-            cursors=[CursorReviveAtPayload(
-                id=cursor.id,
-                position=cursor.position,
-                pointer=cursor.pointer,
-                color=cursor.color,
-                revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None
-            ) for cursor in cursors]
-        )
-    )
-
-    await multicast(
-        target_conns=[cursor.id for cursor in target_cursors],
-        message=message
-    )

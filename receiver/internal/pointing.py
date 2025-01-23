@@ -17,6 +17,8 @@ from config import MINE_KILL_DURATION_SECONDS
 
 from datetime import datetime, timedelta
 
+from .utils import multicast
+
 
 class PointingReceiver():
     @EventBroker.add_receiver(EventEnum.POINTING)
@@ -194,16 +196,3 @@ async def special_click(cursor: Cursor, tile: Tile):
                 )
             )
         )
-
-
-async def multicast(target_conns: list[str], message: Message):
-    await EventBroker.publish(
-        message=Message(
-            event="multicast",
-            header={
-                "target_conns": target_conns,
-                "origin_event": message.event
-            },
-            payload=message.payload
-        )
-    )

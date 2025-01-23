@@ -1,6 +1,6 @@
 from datetime import datetime
 from .utils import clear_records
-from event.payload import ErrorEvent, ErrorPayload
+from data.payload import EventEnum, ErrorPayload
 from event.message import Message
 import unittest
 
@@ -16,7 +16,7 @@ class EventRecorderTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_record(self):
         message = Message(
-            event=ErrorEvent.ERROR,
+            event=EventEnum.ERROR,
             header={
                 "ayo": "pizza here",
                 "thisisint": 1

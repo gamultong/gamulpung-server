@@ -19,13 +19,6 @@ if __name__ == "__main__":
     from handler.cursor.test import *
 
     # receiver
-    # from receiver.board.test import *
-    # from receiver.conn.test import *
-    # from receiver.cursor.test import *
+    from receiver.test import *
 
-    try:
-        unittest.main()
-    finally:
-        import asyncio
-        from db import db
-        asyncio.run(db.close())
+    unittest.main()
