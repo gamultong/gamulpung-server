@@ -1,17 +1,24 @@
 from event.message import Message
 
-from data.board import Point
-from data.payload import EventEnum, ErrorPayload
-
+from data.board import Point, Tiles, Tile
+from data.payload import (
+    EventEnum, ErrorPayload,
+    FetchTilesPayload, TilesPayload
+)
 from config import VIEW_SIZE_LIMIT
 
-from receiver.internal.fetch_tiles import validate_fetch_range
+from receiver.internal.fetch_tiles import (
+    FetchTilesReceiver,
+    validate_fetch_range, fetch_tiles
+)
 
-import unittest
-from .utils import assertMessageEqual
+from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
+from unittest.mock import patch, AsyncMock, MagicMock
+
+from .test_tools import assertMessageEqual, assertMulticast
 
 
-class ValidateFetchRange_TestCase(unittest.TestCase):
+class ValidateFetchRange_TestCase(TestCase):
     def test_normal(self):
         start = Point(x=0, y=0)
         end = Point(x=1, y=-1)
@@ -47,3 +54,116 @@ class ValidateFetchRange_TestCase(unittest.TestCase):
                 payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
             )
         )
+
+
+class FetchTiles_TestCase(AsyncTestCase):
+    @patch("handler.board.BoardHandler.fetch", return_value=MagicMock(Tiles))
+    async def test_normal(self, fetch_mock: AsyncMock):
+        start, end = Point(0, 0), Point(0, 0)
+
+        tiles = await fetch_tiles(start, end)
+
+        fetch_mock.assert_called_once_with(start, end)
+        tiles.hide_info.assert_called_once()
+
+
+def mock_fetch_tiles_receiver_dependency(func):
+    func = patch("receiver.internal.fetch_tiles.multicast")(func)
+    func = patch("receiver.internal.fetch_tiles.fetch_tiles")(func)
+    func = patch("receiver.internal.fetch_tiles.validate_fetch_range")(func)
+
+    async def wrapper(*args, **kwargs):
+        return await func(*args, **kwargs)
+    return wrapper
+
+
+class FetchTilesReceiver_TestCase(AsyncTestCase):
+    @mock_fetch_tiles_receiver_dependency
+    async def test_normal(
+        self,
+        multicast: AsyncMock,
+        fetch_tiles: AsyncMock,
+        validate_fetch_range: MagicMock
+    ):
+        # arg
+        start = Point(0, 0)
+        end = Point(1, -1)
+        sender = "example"
+        # expect
+        expected_tiles_str = "abcdef"
+
+        # mock
+        tiles_mock = MagicMock(Tiles)
+        tiles_mock.to_str.return_value = expected_tiles_str
+        validate_fetch_range.return_value = None
+        fetch_tiles.return_value = tiles_mock
+
+        # call
+        await FetchTilesReceiver.receive_fetch_tiles(Message(
+            event=EventEnum.FETCH_TILES,
+            header={"sender": sender},
+            payload=FetchTilesPayload(
+                start_p=start,
+                end_p=end
+            )
+        ))
+
+        # assert
+        validate_fetch_range.assert_called_once_with(start, end)
+        fetch_tiles.assert_awaited_once_with(start, end)
+
+        multicast.assert_awaited_once()
+        assertMulticast(
+            self=self, call=multicast.mock_calls[0],
+            target_conns=[sender],
+            message=Message(
+                event=EventEnum.TILES,
+                payload=TilesPayload(
+                    start_p=start,
+                    end_p=end,
+                    tiles=expected_tiles_str
+                )
+            )
+        )
+
+    @mock_fetch_tiles_receiver_dependency
+    async def test_invalid_fetch_range(
+        self,
+        multicast: AsyncMock,
+        fetch_tiles: AsyncMock,
+        validate_fetch_range: MagicMock
+    ):
+        # arg
+        start = Point(1, 0)
+        end = Point(0, 0)
+        sender = "example"
+        # expect
+        error_msg = Message(
+            event=EventEnum.ERROR,
+            payload=ErrorPayload(msg="example message")
+        )
+
+        # mock
+        validate_fetch_range.return_value = error_msg
+
+        # call
+        await FetchTilesReceiver.receive_fetch_tiles(Message(
+            event=EventEnum.FETCH_TILES,
+            header={"sender": sender},
+            payload=FetchTilesPayload(
+                start_p=start,
+                end_p=end
+            )
+        ))
+
+        # assert
+        validate_fetch_range.assert_called_once_with(start, end)
+
+        multicast.assert_awaited_once()
+        assertMulticast(
+            self=self, call=multicast.mock_calls[0],
+            target_conns=[sender],
+            message=error_msg
+        )
+
+        fetch_tiles.assert_not_called()
