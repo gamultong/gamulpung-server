@@ -1,8 +1,6 @@
 from aiosqlite import connect, Connection
 from config import DATABASE_PATH
 
-from functools import wraps
-
 
 def use_db(func):
     async def wrapper(*args, **kwargs):

@@ -23,16 +23,16 @@ async def multicast(target_conns: list[str], message: Message):
     )
 
 
-def watch(wachers: list[Cursor], watchings: list[Cursor]):
-    for wacher in wachers:
-        for waching in watchings:
-            CursorHandler.add_watcher(watcher=wacher, watching=waching)
+def watch(watchers: list[Cursor], watchings: list[Cursor]):
+    for watcher in watchers:
+        for watching in watchings:
+            CursorHandler.add_watcher(watcher=watcher, watching=watching)
 
 
-def unwatch(wachers: list[Cursor], watchings: list[Cursor]):
-    for wacher in wachers:
-        for waching in watchings:
-            CursorHandler.remove_watcher(watcher=wacher, watching=waching)
+def unwatch(watchers: list[Cursor], watchings: list[Cursor]):
+    for watcher in watchers:
+        for watching in watchings:
+            CursorHandler.remove_watcher(watcher=watcher, watching=watching)
 
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
