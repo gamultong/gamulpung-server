@@ -1,4 +1,4 @@
-from .internal.point import Point
+from .internal.point import Point, PointRange
 from .internal.section import Section
 from .internal.tile import Tile
 from .internal.tiles import Tiles

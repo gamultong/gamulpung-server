@@ -9,13 +9,13 @@ from config import VIEW_SIZE_LIMIT
 
 from receiver.internal.fetch_tiles import (
     FetchTilesReceiver,
-    validate_fetch_range, fetch_tiles
+    validate_fetch_range
 )
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import patch, AsyncMock, MagicMock
 
-from .test_tools import assertMessageEqual, assertMulticast
+from .test_tools import assertMulticast
 
 
 class ValidateFetchRange_TestCase(TestCase):
@@ -33,8 +33,8 @@ class ValidateFetchRange_TestCase(TestCase):
 
         result = validate_fetch_range(start=start, end=end)
 
-        assertMessageEqual(
-            self, result,
+        self.assertEqual(
+            result,
             Message(
                 event=EventEnum.ERROR,
                 payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
@@ -47,25 +47,13 @@ class ValidateFetchRange_TestCase(TestCase):
 
         result = validate_fetch_range(start=start, end=end)
 
-        assertMessageEqual(
-            self, result,
+        self.assertEqual(
+            result,
             Message(
                 event=EventEnum.ERROR,
                 payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
             )
         )
-
-
-class FetchTiles_TestCase(AsyncTestCase):
-    @patch("handler.board.BoardHandler.fetch", return_value=MagicMock(Tiles))
-    async def test_normal(self, fetch_mock: AsyncMock):
-        start, end = Point(0, 0), Point(0, 0)
-
-        tiles = await fetch_tiles(start, end)
-
-        fetch_mock.assert_called_once_with(start, end)
-        tiles.hide_info.assert_called_once()
-
 
 def mock_fetch_tiles_receiver_dependency(func):
     func = patch("receiver.internal.fetch_tiles.multicast")(func)

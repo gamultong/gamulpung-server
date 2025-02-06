@@ -4,12 +4,11 @@ from data.payload import (
     EventEnum, FetchTilesPayload, TilesPayload, ErrorPayload
 )
 
-from handler.board import BoardHandler
 from data.board import Point
 
 from config import VIEW_SIZE_LIMIT
 
-from .utils import multicast
+from .utils import multicast, fetch_tiles
 
 
 class FetchTilesReceiver:
@@ -60,10 +59,3 @@ def validate_fetch_range(start: Point, end: Point):
         )
 
     return None
-
-
-async def fetch_tiles(start: Point, end: Point):
-    tiles = await BoardHandler.fetch(start, end)
-    tiles.hide_info()
-
-    return tiles

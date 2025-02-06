@@ -5,6 +5,7 @@ from data.payload import (
 )
 
 from handler.cursor import CursorHandler
+from handler.board import BoardHandler
 
 from data.cursor import Cursor
 from data.board import Point
@@ -21,6 +22,13 @@ async def multicast(target_conns: list[str], message: Message):
             payload=message.payload
         )
     )
+
+
+async def fetch_tiles(start: Point, end: Point):
+    tiles = await BoardHandler.fetch(start, end)
+    tiles.hide_info()
+
+    return tiles
 
 
 def watch(watchers: list[Cursor], watchings: list[Cursor]):

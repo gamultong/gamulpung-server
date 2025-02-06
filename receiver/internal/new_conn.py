@@ -8,11 +8,11 @@ from data.payload import (
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
 
-from data.board import Point
+from data.board import Point, Tiles
 from data.cursor import Cursor
 
 from .utils import (
-    multicast, watch, get_view_range_points, publish_new_cursors
+    multicast, watch, get_view_range_points, publish_new_cursors, fetch_tiles
 )
 
 # 1. 커서 포지션 선정
@@ -29,18 +29,7 @@ class NewConnReceiver():
 
         start, end = get_view_range_points(cursor.position, cursor.width, cursor.height)
 
-        await multicast(
-            target_conns=[cursor.id],
-            message=Message(
-                event=EventEnum.MY_CURSOR,
-                payload=MyCursorPayload(
-                    id=cursor.id,
-                    position=cursor.position,
-                    pointer=cursor.pointer,
-                    color=cursor.color
-                )
-            )
-        )
+        await multicast_my_cursor(target_conns=[cursor],cursor=cursor)
 
         cursors_in_view = fetch_cursors_in_view(cursor)
         if len(cursors_in_view) > 0:
@@ -61,41 +50,25 @@ class NewConnReceiver():
             )
 
         tiles = await fetch_tiles(start, end)
-
-        await multicast(
-            target_conns=[cursor.id],
-            message=Message(
-                event=EventEnum.TILES,
-                payload=TilesPayload(
-                    start_p=start,
-                    end_p=end,
-                    tiles=tiles.to_str()
-                )
-            )
+        
+        await multicast_tiles(
+            target_conns=[cursor], 
+            start=start, end=end, tiles=tiles
         )
+
 
 
 async def new_cursor(payload: NewConnPayload):
     position = await BoardHandler.get_random_open_position()
 
-    conn_id = payload.conn_id
-    width = payload.width
-    height = payload.height
-
     cursor = CursorHandler.create_cursor(
-        conn_id=conn_id,
+        conn_id=payload.conn_id,
         position=position,
-        width=width, height=height
+        width=payload.width, 
+        height=payload.height
     )
 
     return cursor
-
-
-async def fetch_tiles(start: Point, end: Point):
-    tiles = await BoardHandler.fetch(start, end)
-    tiles.hide_info()
-
-    return tiles
 
 
 def fetch_with_view_including(cursor: Cursor) -> list[Cursor]:
@@ -110,3 +83,31 @@ def fetch_cursors_in_view(cursor: Cursor) -> list[Cursor]:
     cursors_in_view = CursorHandler.exists_range(start=start, end=end, exclude_ids=[cursor.id])
 
     return cursors_in_view
+
+
+async def multicast_my_cursor(target_conns: list[Cursor], cursor: Cursor):
+    await multicast(
+        target_conns=[cursor.id for cursor in target_conns],
+        message=Message(
+            event=EventEnum.MY_CURSOR,
+            payload=MyCursorPayload(
+                id=cursor.id,
+                position=cursor.position,
+                pointer=cursor.pointer,
+                color=cursor.color
+            )
+        )
+    )
+
+async def multicast_tiles(target_conns: list[Cursor], start: Point, end: Point, tiles: Tiles):
+    await multicast(
+    target_conns=[cursor.id for cursor in target_conns],
+    message=Message(
+        event=EventEnum.TILES,
+        payload=TilesPayload(
+            start_p=start,
+            end_p=end,
+            tiles=tiles.to_str()
+        )
+    )
+)

@@ -12,6 +12,7 @@ from data.payload import (
 from .exceptions import InvalidEventTypeException
 
 import json
+from dataclasses import dataclass
 
 EVENT_TYPE = TypeVar(
     "EVENT_TYPE",
@@ -27,13 +28,22 @@ DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
     EventEnum.SEND_CHAT: SendChatPayload
 }
 
-
+@dataclass
 class Message(Generic[EVENT_TYPE]):
-    def __init__(self, event: str, payload: EVENT_TYPE, header: dict[str, object] = {}):
-        self.event = event
-        self.header = header
-        self.payload = payload
+    event: str
+    payload: EVENT_TYPE
+    header: dict[str, object]
 
+    def __init__(
+        self,
+        event: str,
+        payload: EVENT_TYPE,
+        header: dict[str, object] = {}
+    ):
+        self.event = event
+        self.payload = payload
+        self.header = header
+    
     def to_str(self, del_header: bool = True):
         data = self
         if del_header:

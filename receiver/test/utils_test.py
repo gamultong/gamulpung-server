@@ -1,16 +1,17 @@
 from event.message import Message
 from data.cursor import Cursor
+from data.board import Point, Tiles
 from data.payload import EventEnum, CursorsPayload, CursorReviveAtPayload
 
 from receiver.internal.utils import (
     multicast, watch, unwatch,
-    publish_new_cursors
+    publish_new_cursors, fetch_tiles
 )
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import patch, AsyncMock, MagicMock
 
-from .test_tools import assertMessageEqual, assertMulticast
+from .test_tools import assertMulticast
 
 
 class Multicast_TestCase(AsyncTestCase):
@@ -26,8 +27,8 @@ class Multicast_TestCase(AsyncTestCase):
 
         publish_mock.assert_called_once()
         got: Message = publish_mock.mock_calls[0].kwargs["message"]
-        assertMessageEqual(
-            self, got,
+        self.assertEqual(
+            got,
             Message(
                 event="multicast",
                 header={
@@ -37,6 +38,18 @@ class Multicast_TestCase(AsyncTestCase):
                 payload=message.payload
             )
         )
+
+
+class FetchTiles_TestCase(AsyncTestCase):
+    @patch("handler.board.BoardHandler.fetch", return_value=MagicMock(Tiles))
+    async def test_normal(self, fetch_mock: AsyncMock):
+        start, end = Point(0, 0), Point(0, 0)
+
+        tiles = await fetch_tiles(start, end)
+
+        fetch_mock.assert_called_once_with(start, end)
+        tiles.hide_info.assert_called_once()
+
 
 
 cur_A = Cursor.create("A")
