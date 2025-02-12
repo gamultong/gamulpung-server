@@ -150,7 +150,7 @@ class CursorEventHandler:
         # TODO: message.payload.pointable 사용처?
         cursor.pointer = message.payload.pointer
 
-        watchers = CursorHandler.get_watchers(cursor.id)
+        watchers = CursorHandler.get_watchers_id(cursor.id)
 
         message = Message(
             event="multicast",
@@ -237,7 +237,7 @@ class CursorEventHandler:
         bottom_right = Point(cursor.position.x + cursor.width, cursor.position.y - cursor.height)
         cursors_in_view = CursorHandler.exists_range(start=top_left, end=bottom_right, exclude_ids=[cursor.id])
 
-        original_watching_ids = CursorHandler.get_watching(cursor_id=cursor.id)
+        original_watching_ids = CursorHandler.get_watching_id(cursor_id=cursor.id)
         original_watchings = [CursorHandler.get_cursor(id) for id in original_watching_ids]
 
         if len(original_watchings) > 0:
@@ -266,7 +266,7 @@ class CursorEventHandler:
         # 새로운 위치를 바라보고 있는 커서들 찾기, 본인 제외
         watchers_new_pos = CursorHandler.view_includes_point(p=new_position, exclude_ids=[cursor.id])
 
-        original_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.id)
+        original_watcher_ids = CursorHandler.get_watchers_id(cursor_id=cursor.id)
         original_watchers = [CursorHandler.get_cursor(id) for id in original_watcher_ids]
 
         if len(original_watchers) > 0:
@@ -360,7 +360,7 @@ class CursorEventHandler:
             # 보고있는 커서들에게 cursors-died
             watcher_ids: set[str] = set()
             for cursor in nearby_cursors:
-                temp_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.id)
+                temp_watcher_ids = CursorHandler.get_watchers_id(cursor_id=cursor.id)
                 watcher_ids.update(temp_watcher_ids + [cursor.id])
 
             pub_message = Message(
@@ -432,8 +432,8 @@ class CursorEventHandler:
 
         cursor = CursorHandler.get_cursor(sender)
 
-        watching = CursorHandler.get_watching(cursor_id=cursor.id)
-        watchers = CursorHandler.get_watchers(cursor_id=cursor.id)
+        watching = CursorHandler.get_watching_id(cursor_id=cursor.id)
+        watchers = CursorHandler.get_watchers_id(cursor_id=cursor.id)
 
         for id in watching:
             other_cursor = CursorHandler.get_cursor(id)
@@ -482,7 +482,7 @@ class CursorEventHandler:
             ))
             return
 
-        cur_watching = CursorHandler.get_watching(cursor_id=cursor.id)
+        cur_watching = CursorHandler.get_watching_id(cursor_id=cursor.id)
 
         old_width, old_height = cursor.width, cursor.height
         cursor.set_size(new_width, new_height)
@@ -538,7 +538,7 @@ class CursorEventHandler:
             ))
             return
 
-        watchers = CursorHandler.get_watchers(sender)
+        watchers = CursorHandler.get_watchers_id(sender)
 
         message = Message(
             event="multicast",

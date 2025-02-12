@@ -297,10 +297,10 @@ class CursorEventHandler_NewCursorCandidateReceiver_TestCase(unittest.IsolatedAs
         self.assertEqual(got.payload.cursors[0].color, my_color)
 
         # 연관관계 확인
-        b_watching_list = CursorHandler.get_watching(new_conn_id)
+        b_watching_list = CursorHandler.get_watching_id(new_conn_id)
         self.assertEqual(len(b_watching_list), original_cursors_len)
 
-        b_watcher_list = CursorHandler.get_watchers(new_conn_id)
+        b_watcher_list = CursorHandler.get_watchers_id(new_conn_id)
         self.assertEqual(len(b_watcher_list), original_cursors_len)
 
 
@@ -661,14 +661,14 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(got.payload.new_position, message.payload.position)
 
         # watcher 관계 확인
-        a_watchings = CursorHandler.get_watching("A")
+        a_watchings = CursorHandler.get_watching_id("A")
         self.assertEqual(len(a_watchings), 1)
         self.assertIn("C", a_watchings)
 
-        a_watchers = CursorHandler.get_watchers("A")
+        a_watchers = CursorHandler.get_watchers_id("A")
         self.assertEqual(len(a_watchers), 0)
 
-        b_watchings = CursorHandler.get_watching("B")
+        b_watchings = CursorHandler.get_watching_id("B")
         self.assertEqual(len(b_watchings), 1)
         self.assertIn("C", b_watchings)
 
@@ -717,17 +717,17 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(got.payload.cursors[0].color, self.cur_b.color)
 
         # watcher 관계 확인
-        b_watchers = CursorHandler.get_watchers("B")
+        b_watchers = CursorHandler.get_watchers_id("B")
         self.assertEqual(len(b_watchers), 2)
         self.assertIn("A", b_watchers)
         self.assertIn("C", b_watchers)
 
-        a_watchings = CursorHandler.get_watching("A")
+        a_watchings = CursorHandler.get_watching_id("A")
         self.assertEqual(len(a_watchings), 2)
         self.assertIn("B", a_watchings)
         self.assertIn("C", a_watchings)
 
-        c_watchings = CursorHandler.get_watching("C")
+        c_watchings = CursorHandler.get_watching_id("C")
         self.assertEqual(len(c_watchings), 1)
         self.assertIn("B", c_watchings)
 
@@ -796,7 +796,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         self.assertEqual(got1.payload.new_position, message.payload.position)
 
         # watcher 관계 확인
-        c_watchings = CursorHandler.get_watching("C")
+        c_watchings = CursorHandler.get_watching_id("C")
         self.assertEqual(len(c_watchings), 2)
         self.assertIn("A", c_watchings)
         self.assertIn("B", c_watchings)
@@ -825,7 +825,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         mock.assert_not_called()
 
         # watcher 관계 확인
-        c_watchings = CursorHandler.get_watching("C")
+        c_watchings = CursorHandler.get_watching_id("C")
         self.assertEqual(len(c_watchings), 0)
 
 
@@ -1076,11 +1076,11 @@ class CursorEventHandler_ConnClosed_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(got.payload.id, self.cur_a.id)
 
         # watcher 관계 확인
-        b_watchings = CursorHandler.get_watching("B")
+        b_watchings = CursorHandler.get_watching_id("B")
         self.assertEqual(len(b_watchings), 1)
         self.assertIn("C", b_watchings)
 
-        c_watchers = CursorHandler.get_watchers("C")
+        c_watchers = CursorHandler.get_watchers_id("C")
         self.assertEqual(len(c_watchers), 1)
         self.assertIn("B", c_watchers)
 
@@ -1135,11 +1135,11 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(got.payload.cursors[0].pointer, self.cur_b.pointer)
 
         # watcher 관계 확인
-        a_watching = CursorHandler.get_watching("A")
+        a_watching = CursorHandler.get_watching_id("A")
         self.assertEqual(len(a_watching), 1)
         self.assertIn("B", a_watching)
 
-        b_watchers = CursorHandler.get_watchers("B")
+        b_watchers = CursorHandler.get_watchers_id("B")
         self.assertEqual(len(b_watchers), 1)
         self.assertIn("A", b_watchers)
 
@@ -1159,11 +1159,11 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         mock.assert_not_called()
 
         # watcher 관계 확인
-        a_watching = CursorHandler.get_watching("A")
+        a_watching = CursorHandler.get_watching_id("A")
         self.assertEqual(len(a_watching), 1)
         self.assertIn("C", a_watching)
 
-        b_watchers = CursorHandler.get_watchers("B")
+        b_watchers = CursorHandler.get_watchers_id("B")
         self.assertEqual(len(b_watchers), 0)
 
     @patch("event.broker.EventBroker.publish")
@@ -1240,11 +1240,11 @@ class CursorEventHandler_SetViewSize_TestCase(unittest.IsolatedAsyncioTestCase):
         mock.assert_not_called()
 
         # watcher 관계 확인
-        b_watching = CursorHandler.get_watching("B")
+        b_watching = CursorHandler.get_watching_id("B")
         self.assertEqual(len(b_watching), 1)
         self.assertIn("C", b_watching)
 
-        a_watchers = CursorHandler.get_watchers("A")
+        a_watchers = CursorHandler.get_watchers_id("A")
         self.assertEqual(len(a_watchers), 0)
 
 

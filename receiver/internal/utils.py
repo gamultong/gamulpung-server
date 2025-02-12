@@ -70,7 +70,7 @@ def find_cursors_to_unwatch(cursor: Cursor) -> list[Cursor]:
             return None
         return other_cursor
 
-    cur_watching = CursorHandler.get_watching(cursor_id=cursor.id)
+    cur_watching = CursorHandler.get_watching_id(cursor_id=cursor.id)
 
     return [
         cursor

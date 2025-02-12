@@ -35,7 +35,7 @@ class PointingReceiver():
 
         cursor.pointer = new_pointer
 
-        watchers = CursorHandler.get_watchers(cursor.id)
+        watchers = CursorHandler.get_watchers_id(cursor.id)
         if len(watchers) > 0:
             await multicast(
                 target_conns=[cursor.id] + watchers,
@@ -148,7 +148,7 @@ async def general_click(cursor: Cursor, tile: Tile):
             # 보고있는 커서들에게 cursors-died
             watcher_ids: set[str] = set()
             for cursor in nearby_cursors:
-                temp_watcher_ids = CursorHandler.get_watchers(cursor_id=cursor.id)
+                temp_watcher_ids = CursorHandler.get_watchers_id(cursor_id=cursor.id)
                 watcher_ids.update(temp_watcher_ids + [cursor.id])
 
             if len(watcher_ids) > 0:

@@ -164,7 +164,7 @@ class CursorHandler:
             del CursorHandler.watchers[watching_id]
 
     @staticmethod
-    def get_watchers(cursor_id: str) -> list[str]:
+    def get_watchers_id(cursor_id: str) -> list[str]:
         if not CursorHandler.check_cursor_exists(cursor_id):
             raise NoMatchingCursorException(cursor_id)
 
@@ -174,7 +174,7 @@ class CursorHandler:
         return []
 
     @staticmethod
-    def get_watching(cursor_id: str) -> list[str]:
+    def get_watching_id(cursor_id: str) -> list[str]:
         if not CursorHandler.check_cursor_exists(cursor_id):
             raise NoMatchingCursorException(cursor_id)
 
