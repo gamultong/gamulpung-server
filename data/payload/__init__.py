@@ -23,5 +23,7 @@ from .internal.payload import (
     MyCursorPayload,
     YouDiedPayload,
     CursorsDiedPayload,
-    SetViewSizePayload
+    SetViewSizePayload,
+    SetFlagPayload,
+    OpenTilePayload
 )

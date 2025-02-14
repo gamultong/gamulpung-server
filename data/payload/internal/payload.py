@@ -13,11 +13,13 @@ class EventEnum(str, Enum):
     CHAT = "chat"
     POINTING = "pointing"
     POINTER_SET = "pointer-set"
+    SET_FLAG = "set-flag"
+    FLAG_SET = "flag-set"
+    OPEN_TILE = "open-tile"
     YOU_DIED = "you-died"
     CURSORS_DIED = "cursors-died"
     SINGLE_TILE_OPENED = "single-tile-opened"
     TILES_OPENED = "tiles-opened"
-    FLAG_SET = "flag-set"
     MOVING = "moving"
     MOVED = "moved"
     NEW_CONN = "new-conn"
@@ -165,3 +167,11 @@ class CursorsDiedPayload(Payload):
 class SetViewSizePayload(Payload):
     width: int
     height: int
+
+@dataclass
+class SetFlagPayload(Payload):
+    pass
+
+@dataclass
+class OpenTilePayload(Payload):
+    pass
