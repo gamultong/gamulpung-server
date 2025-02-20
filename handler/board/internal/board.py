@@ -3,6 +3,7 @@ import random
 from data.board import Point, Section, Tile, Tiles
 from handler.board.storage import SectionStorage
 from data.cursor import Color
+from typing import Coroutine
 
 
 async def init_board():
@@ -62,7 +63,13 @@ class BoardHandler:
         return Tiles(data=out)
 
     @staticmethod
-    async def open_tile(p: Point) -> Tile:
+    async def _open_tile(p: Point) -> Tile:
+        """
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        DEPRECATED
+        => open_tiles에 병합
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        """
         section, inner_p = await BoardHandler._get_section_from_abs_point(p)
 
         tiles = section.fetch(inner_p)
@@ -78,12 +85,32 @@ class BoardHandler:
         return tile
 
     @staticmethod
-    async def open_tiles_cascade(p: Point) -> tuple[Point, Point, Tiles]:
+    async def open_tiles(p: Point) -> tuple[Point, Point, Tiles]:
         """
         지정된 타일부터 주변 타일들을 연쇄적으로 개방한다.
         빈칸들과 빈칸과 인접한숫자 타일까지 개방하며, 섹션 가장자리 데이터가 새로운 섹션으로 인해 중간에 수정되는 것을 방지하기 위해
         섹션을 사용할 때 인접 섹션이 존재하지 않으면 미리 만들어 놓는다.
         """
+
+        # open_tile과 병합되며 생긴 레거시. 나중에 정리해야 함.
+        section, inner_p = await BoardHandler._get_section_from_abs_point(p)
+
+        tiles = section.fetch(inner_p)
+
+        tile = Tile.from_int(tiles.data[0])
+        
+        is_multi_openable = (not tile.is_mine) and (tile.number is None)
+        if is_multi_openable:
+            tile.is_open = True
+
+            tiles.data[0] = tile.data
+
+            section.update(data=tiles, start=inner_p)
+            await BoardHandler._set_section(section)
+
+            return p, p, tiles
+        # 레거시 끝
+
         # 탐색하며 발견한 섹션들
         sections: list[Section] = []
 
@@ -198,6 +225,7 @@ class BoardHandler:
 
         return tile
 
+    @staticmethod
     async def _get_section_from_abs_point(abs_p: Point) -> tuple[Section, Point]:
         """
         절대 좌표 abs_p를 포함하는 섹션, 그리고 abs_p의 섹션 내부 좌표를 반환한다.

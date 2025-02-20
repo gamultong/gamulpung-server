@@ -12,6 +12,9 @@ from data.board import Point
 
 
 async def multicast(target_conns: list[str], message: Message):
+    if len(target_conns) == 0:
+        return
+
     await EventBroker.publish(
         message=Message(
             event="multicast",

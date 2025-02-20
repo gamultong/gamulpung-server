@@ -122,24 +122,15 @@ class ConnClosedPayload(Payload):
 
 
 @dataclass
-class CursorPayload(Payload):
+class CursorQuitPayload(Payload):
     id: str
 
-
 @dataclass
-class CursorQuitPayload(CursorPayload):
-    pass
-
-
-@dataclass
-class CursorInfoPayload(CursorPayload):
+class CursorReviveAtPayload(Payload):
+    id: str
     position: ParsablePayload[Point]
     pointer: ParsablePayload[Point] | None
     color: Color
-
-
-@dataclass
-class CursorReviveAtPayload(CursorInfoPayload):
     revive_at: str | None
 
 
@@ -147,21 +138,17 @@ class CursorReviveAtPayload(CursorInfoPayload):
 class CursorsPayload(Payload):
     cursors: list[CursorReviveAtPayload]
 
-
-class MyCursorPayload(CursorInfoPayload):
-    pass
+@dataclass
+class MyCursorPayload(Payload):
+    id: str
+    position: ParsablePayload[Point]
+    pointer: ParsablePayload[Point] | None
+    color: Color
 
 
 @dataclass
 class YouDiedPayload(Payload):
     revive_at: str
-
-
-@dataclass
-class CursorsDiedPayload(Payload):
-    revive_at: str
-    cursors: list[CursorInfoPayload]
-
 
 @dataclass
 class SetViewSizePayload(Payload):

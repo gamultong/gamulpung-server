@@ -4,12 +4,18 @@ from dataclasses import dataclass
 
 @dataclass
 class Tiles(DataObj):
+    # range 추가
+    # data에서 Tile접근 가능하게 해야함
+    # tiles.tile_at(x, y, _is_abs) <- inner? outer?
+    # tiles.range -> 절대좌표로?
+    # property로 width, height 하면 편할 듯?
     data: bytearray
 
     def to_str(self):
         return self.data.hex()
 
     def hide_info(self):
+        # 불변 객체 반환으로 변경 필요
         """
         타일들의 mine, number 정보를 제거한다.
         타일의 상태가 CLOSED일 때만 해당한다.

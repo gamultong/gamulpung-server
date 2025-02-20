@@ -20,10 +20,10 @@ def get_cur_set(n: int) -> list[Cursor]:
 
 
 class PathPatch:
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
 
-    def __call__(self, name, *args, **kwargs):
+    def __call__(self, name: str, *args, **kwargs):
         def wrapper(func):
             func = patch(self.path+"."+name, *args, **kwargs)(func)
             return func

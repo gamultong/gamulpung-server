@@ -147,7 +147,7 @@ class BoardEventHandler():
 
                 if (not tile.is_mine) and (tile.number is None):
                     # 빈 칸. 주변 칸 모두 열기.
-                    start_p, end_p, tiles = await BoardHandler.open_tiles_cascade(pointer)
+                    start_p, end_p, tiles = await BoardHandler.open_tiles(pointer)
                     tiles.hide_info()
                     tile_str = tiles.to_str()
 
@@ -161,7 +161,7 @@ class BoardEventHandler():
                     )
                     publish_coroutines.append(EventBroker.publish(pub_message))
                 else:
-                    tile = await BoardHandler.open_tile(pointer)
+                    tile = await BoardHandler._open_tile(pointer)
 
                     tile_str = Tiles(data=bytearray([tile.data])).to_str()
 

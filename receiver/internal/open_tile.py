@@ -2,8 +2,8 @@ from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
     EventEnum, 
-    OpenTilePayload, SingleTileOpenedPayload, TilesOpenedPayload,
-    YouDiedPayload, CursorsDiedPayload, CursorInfoPayload
+    OpenTilePayload, TilesOpenedPayload,
+    YouDiedPayload, CursorReviveAtPayload, CursorsPayload
 )
 
 from handler.board import BoardHandler
@@ -18,13 +18,13 @@ from datetime import datetime, timedelta
 
 from .utils import multicast
 
-def get_tile_if_openable(cursor:Cursor):
+async def get_tile_if_openable(cursor:Cursor):
     if not cursor.check_interactable(cursor.pointer):
         return None
 
     # 보드 상태 가져오기 ~ 업데이트하기
-    tiles = BoardHandler.fetch(start=cursor.pointer, end=cursor.pointer)
-    tile = Tile.from_int(tiles[0])
+    tiles = await BoardHandler.fetch(start=cursor.pointer, end=cursor.pointer)
+    tile = Tile.from_int(tiles.data[0])
 
     if tile.is_open:
         return None
@@ -40,65 +40,57 @@ class OpenTileReceiver():
     async def receive_open_tile(message: Message[OpenTilePayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
 
-        if not (tile := get_tile_if_openable(cursor)):
+        if not (tile := await get_tile_if_openable(cursor)):
             return
 
-        is_multi_openable = (not tile.is_mine) and (tile.number is None)
-        if is_multi_openable:
-            # 빈 칸. 주변 칸 모두 열기.
-            start_p, end_p, tiles = await BoardHandler.open_tiles_cascade(cursor.pointer)
-            tiles.hide_info()
-            tiles_str = tiles.to_str()
+        # 빈 칸. 주변 칸 모두 열기.
+        opened_range, tiles_opened = await open_tile(point=cursor.pointer)
 
-            # 변경된 타일을 보고있는 커서들에게 전달
-            view_cursors = CursorHandler.view_includes_range(start=start_p, end=end_p)
-            if len(view_cursors) > 0:
-                await multicast_tiles_opened(
-                    target_conns=view_cursors, 
-                    point_range=PointRange(start_p, end_p),
-                    tiles_str=tiles_str
-                )
+        # 변경된 타일을 보고있는 커서들에게 전달
+        view_cursors = CursorHandler.view_includes_range(
+            start=opened_range.top_left, 
+            end=opened_range.bottom_right
+        )
+        await multicast_tiles_opened(
+            target_conns=view_cursors, 
+            point_range=opened_range,
+            tiles_str=tiles_opened
+        )
 
-        else:
-            tile = await BoardHandler.open_tile(cursor.pointer)
+        if tile.is_mine:
+            dead_cursors = detonate_mine(point=cursor.pointer)
 
-            # 변경된 타일을 보고있는 커서들에게 전달
-            view_cursors = CursorHandler.view_includes_point(p=cursor.pointer)
-            if len(view_cursors) > 0:
-                await multicast_single_tile_opened(
-                    target_conns=view_cursors,
-                    tile=tile, position=cursor.pointer
-                )
+            # 범위 안 커서들에게 you-died
+            await multicast_you_died(target_conns=dead_cursors)
+            
+            # 보고있는 커서들에게 cursors-died
+            watchers = get_watchers(dead_cursors)
+            await multicast_cursors_died(target_conns=watchers,cursors=dead_cursors)
 
-            if not tile.is_mine:
-                return
+async def open_tile(point: Point) -> tuple[PointRange, str]:
+    start_p, end_p, tiles = await BoardHandler.open_tiles(point)
+    tiles.hide_info()
+    tiles_str = tiles.to_str()
+    return PointRange(start_p, end_p), tiles_str
 
-            # 주변 8칸 커서들 찾기
-            nearby_cursors = get_nearby_cursors(cursor)
-            if len(nearby_cursors) > 0:
-                revive_at = get_revive_at()
+def detonate_mine(point:Point):        
+    # 주변 8칸 커서들 찾기
+    nearby_cursors = get_nearby_alive_cursors(point)
 
-                # 범위 안 커서들에게 you-died
-                await multicast_you_died(target_conns=nearby_cursors, revive_at=revive_at)
-                
-                # 보고있는 커서들에게 cursors-died
-                watchers = get_watchers(nearby_cursors)
-                if len(watchers) > 0:
-                    await multicast_cursors_died(
-                        target_conns=watchers,
-                        cursors=nearby_cursors,
-                        revive_at=revive_at
-                    )
+    revive_at = get_revive_at()
 
-                # 영향 범위 커서들 죽이기
-                kill_cursors(nearby_cursors, revive_at)
+    for c in nearby_cursors:
+        c.revive_at = revive_at
+        c.pointer = None
+
+    return nearby_cursors
 
 def get_revive_at():
     return datetime.now() + timedelta(seconds=MINE_KILL_DURATION_SECONDS)
 
-def get_nearby_cursors(cursor:Cursor):
-    start_p = Point(cursor.pointer.x - 1, cursor.pointer.y + 1)
-    end_p = Point(cursor.pointer.x + 1, cursor.pointer.y - 1)
+def get_nearby_alive_cursors(point: Point):
+    start_p = Point(point.x - 1, point.y + 1)
+    end_p = Point(point.x + 1, point.y - 1)
 
     nearby_cursors = CursorHandler.exists_range(start=start_p, end=end_p)
     # nearby_cursors 중 죽지 않은 커서들만 걸러내기
@@ -116,12 +108,6 @@ def get_watchers(cursors: list[Cursor]):
     ]
 
 
-def kill_cursors(cursors: list[Cursor], revive_at: datetime):
-    for c in cursors:
-        c.revive_at = revive_at
-        c.pointer = None
-
-
 async def multicast_tiles_opened(target_conns: list[Cursor], point_range: PointRange, tiles_str: str):
     await multicast(
         target_conns=[c.id for c in target_conns],
@@ -135,40 +121,27 @@ async def multicast_tiles_opened(target_conns: list[Cursor], point_range: PointR
         )
     )
 
-async def multicast_single_tile_opened(target_conns: list[Cursor], tile: Tile, position: Point):
-    tile_str = Tiles(data=bytearray([tile.data])).to_str()
-    
-    await multicast(
-        target_conns=[c.id for c in target_conns],
-        message=Message(
-            event=EventEnum.SINGLE_TILE_OPENED,
-            payload=SingleTileOpenedPayload(
-                position=position,
-                tile=tile_str
+async def multicast_you_died(target_conns: list[Cursor]):
+    for cursor in target_conns:
+        await multicast(
+            target_conns=[cursor.id],
+            message=Message(
+                event=EventEnum.YOU_DIED,
+                payload=YouDiedPayload(revive_at=cursor.revive_at.astimezone().isoformat())
             )
         )
-    )
 
-async def multicast_you_died(target_conns: list[Cursor], revive_at: datetime):
-    await multicast(
-        target_conns=[c.id for c in target_conns],
-        message=Message(
-            event=EventEnum.YOU_DIED,
-            payload=YouDiedPayload(revive_at=revive_at.astimezone().isoformat())
-        )
-    )
-
-async def multicast_cursors_died(target_conns: list[Cursor], cursors: list[Cursor],revive_at: datetime ):
+async def multicast_cursors_died(target_conns: list[Cursor], cursors: list[Cursor] ):
     await multicast(
         target_conns=[c.id for c in target_conns],
         message=Message(
             event=EventEnum.CURSORS_DIED,
-            payload=CursorsDiedPayload(
-                revive_at=revive_at.astimezone().isoformat(),
-                cursors=[CursorInfoPayload(
+            payload=CursorsPayload(
+                cursors=[CursorReviveAtPayload(
                     id=cursor.id,
                     position=cursor.position,
                     color=cursor.color,
+                    revive_at=cursor.revive_at,
                     pointer=cursor.pointer
                 ) for cursor in cursors]
             )

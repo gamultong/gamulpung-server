@@ -39,6 +39,18 @@ class Multicast_TestCase(AsyncTestCase):
             )
         )
 
+    @patch("event.broker.EventBroker.publish")
+    async def test_no_target_conns(self, publish_mock: AsyncMock):
+        target_conns = []
+        message = Message(
+            event="example_event",
+            payload="example_payload"
+        )
+
+        await multicast(target_conns=target_conns, message=message)
+
+        publish_mock.assert_not_called()
+
 
 class FetchTiles_TestCase(AsyncTestCase):
     @patch("handler.board.BoardHandler.fetch", return_value=MagicMock(Tiles))
