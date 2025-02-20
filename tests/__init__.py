@@ -17,6 +17,7 @@ if __name__ == "__main__":
     from handler.board.test import *
     from handler.board.storage.test import *
     from handler.cursor.test import *
+    from handler.conn.test import *
 
     # receiver
     from receiver.test import *
