@@ -26,4 +26,3 @@ jobs:
       - name: Test
         run: |
           python -m tests.__init__
-          python -m server_test

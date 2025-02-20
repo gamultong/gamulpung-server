@@ -1,15 +1,20 @@
-import asyncio
-from aiosqlite import connect
+from aiosqlite import connect, Connection
 from config import DATABASE_PATH
 
-db = None
+
+def use_db(func):
+    async def wrapper(*args, **kwargs):
+        try:
+            db = await get_db()
+            return await func(db, *args, **kwargs)
+        finally:
+            await db.close()
+
+    return wrapper
 
 
-async def do_connect():
-    global db
-    db = await connect(
+async def get_db() -> Connection:
+    return await connect(
         database=DATABASE_PATH,
         isolation_level=None  # AUTOCOMMIT
     )
-
-asyncio.run(do_connect())

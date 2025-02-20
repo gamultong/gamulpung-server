@@ -218,8 +218,8 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
             watching=CursorHandler.cursor_dict["A"]
         )
 
-        a_watchers = CursorHandler.get_watchers("A")
-        b_watchers = CursorHandler.get_watchers("B")
+        a_watchers = CursorHandler.get_watchers_id("A")
+        b_watchers = CursorHandler.get_watchers_id("B")
 
         self.assertEqual(len(a_watchers), 1)
         self.assertEqual(a_watchers[0], "B")
@@ -228,7 +228,7 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
 
     def test_get_watchers_no_matching_cursor(self):
         with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.get_watchers("D")
+            CursorHandler.get_watchers_id("D")
 
     def test_get_watching(self):
         CursorHandler.add_watcher(
@@ -236,8 +236,8 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
             watching=CursorHandler.cursor_dict["A"]
         )
 
-        a_watching = CursorHandler.get_watching("A")
-        b_watching = CursorHandler.get_watching("B")
+        a_watching = CursorHandler.get_watching_id("A")
+        b_watching = CursorHandler.get_watching_id("B")
 
         self.assertEqual(b_watching[0], "A")
         self.assertEqual(len(b_watching), 1)
@@ -246,4 +246,4 @@ class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
 
     def test_get_watching_no_matching_cursor(self):
         with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.get_watching("D")
+            CursorHandler.get_watching_id("D")

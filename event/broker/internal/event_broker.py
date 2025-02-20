@@ -6,7 +6,7 @@ from event.message.internal.message import EVENT_TYPE
 from .exceptions import NoMatchingReceiverException
 from uuid import uuid4
 from datetime import datetime
-
+from functools import wraps
 from .event_recorder import EventRecorder
 
 

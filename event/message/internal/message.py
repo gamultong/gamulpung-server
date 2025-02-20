@@ -1,21 +1,18 @@
 from typing import Generic, TypeVar
-from event.payload import (
-    Payload,
-    TilesEvent,
-    PointEvent,
-    MoveEvent,
-    ChatEvent,
+from event.payload import Payload
+from data.payload import (
+    EventEnum,
     FetchTilesPayload,
     TilesPayload,
     SendChatPayload,
     PointingPayload,
     MovingPayload,
-    NewConnEvent,
     SetViewSizePayload
 )
 from .exceptions import InvalidEventTypeException
 
 import json
+from dataclasses import dataclass
 
 EVENT_TYPE = TypeVar(
     "EVENT_TYPE",
@@ -23,21 +20,30 @@ EVENT_TYPE = TypeVar(
 )
 
 DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
-    TilesEvent.FETCH_TILES: FetchTilesPayload,
-    TilesEvent.TILES: TilesPayload,
-    PointEvent.POINTING: PointingPayload,
-    MoveEvent.MOVING: MovingPayload,
-    NewConnEvent.SET_VIEW_SIZE: SetViewSizePayload,
-    ChatEvent.SEND_CHAT: SendChatPayload
+    EventEnum.FETCH_TILES: FetchTilesPayload,
+    EventEnum.TILES: TilesPayload,
+    EventEnum.POINTING: PointingPayload,
+    EventEnum.MOVING: MovingPayload,
+    EventEnum.SET_VIEW_SIZE: SetViewSizePayload,
+    EventEnum.SEND_CHAT: SendChatPayload
 }
 
-
+@dataclass
 class Message(Generic[EVENT_TYPE]):
-    def __init__(self, event: str, payload: EVENT_TYPE, header: dict[str, object] = {}):
-        self.event = event
-        self.header = header
-        self.payload = payload
+    event: str
+    payload: EVENT_TYPE
+    header: dict[str, object]
 
+    def __init__(
+        self,
+        event: str,
+        payload: EVENT_TYPE,
+        header: dict[str, object] = {}
+    ):
+        self.event = event
+        self.payload = payload
+        self.header = header
+    
     def to_str(self, del_header: bool = True):
         data = self
         if del_header:

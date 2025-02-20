@@ -1,7 +1,7 @@
 from data.board import Section, Point
 from handler.board.storage import SectionStorage
 
-from db import db
+from db import get_db
 
 
 async def setup_board():
@@ -51,4 +51,6 @@ async def setup_board():
 
 
 async def teardown_board():
+    db = await get_db()
     await db.execute("DELETE FROM sections")
+    await db.close()

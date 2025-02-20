@@ -20,3 +20,10 @@ class Point(DataObj):
         x = int.from_bytes(bytes=b[:8], signed=True)
         y = int.from_bytes(bytes=b[8:], signed=True)
         return Point(x, y)
+
+@dataclass
+class PointRange(DataObj):
+    top_left : Point
+    bottom_right : Point
+
+    

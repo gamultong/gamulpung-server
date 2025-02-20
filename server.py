@@ -1,11 +1,10 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
-from receiver.conn import ConnectionManager
+from handler.conn import ConnectionManager
 from data.board import Section
-from receiver.board import BoardEventHandler
-from receiver.cursor import CursorEventHandler
+from receiver import *
 from event.message import Message
-from event.payload import ErrorEvent, ErrorPayload
+from data.payload import EventEnum, ErrorPayload
 from config import VIEW_SIZE_LIMIT
 
 app = FastAPI()
@@ -45,7 +44,7 @@ async def session(ws: WebSocket):
             break
         except Exception as e:
             await conn.send(Message(
-                event=ErrorEvent.ERROR,
+                event=EventEnum.ERROR,
                 payload=ErrorPayload(msg=e)
             ))
 
@@ -62,10 +61,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-
-    try:
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    finally:
-        import asyncio
-        from db import db
-        asyncio.run(db.close())
+    uvicorn.run(app, host="0.0.0.0", port=8000)

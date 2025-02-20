@@ -1,11 +1,14 @@
 from data.board import Point, Section
 import asyncio
-from db import db
+
+from aiosqlite import Connection
+from db import use_db
 
 TABLE_NAME = "sections"
 
 
-async def init_table():
+@use_db
+async def init_table(db: Connection):
     await db.execute(f"""
     CREATE TABLE IF NOT EXISTS {TABLE_NAME}(
         x INT NOT NULL,
@@ -23,7 +26,8 @@ asyncio.run(init_table())
 
 
 class SectionStorage:
-    async def get_random_sec_point() -> Point:
+    @use_db
+    async def get_random_sec_point(db: Connection) -> Point:
         """
         주의: 한개 이상의 섹션이 존재해야 함
         """
@@ -33,7 +37,8 @@ class SectionStorage:
 
         return Point(x=row[0], y=row[1])
 
-    async def get(p: Point) -> Section | None:
+    @use_db
+    async def get(db: Connection, p: Point) -> Section | None:
         cur = await db.execute(
             f"SELECT applied_flag, data FROM {TABLE_NAME} WHERE x=:x AND y=:y",
             {"x": p.x, "y": p.y}
@@ -45,7 +50,8 @@ class SectionStorage:
 
         return Section(p=p, applied_flag=row[0], data=bytearray(row[1]))
 
-    async def set(section: Section):
+    @use_db
+    async def set(db: Connection, section: Section):
         await db.execute(
             f"""
             INSERT INTO {TABLE_NAME}(x, y, applied_flag, data)
