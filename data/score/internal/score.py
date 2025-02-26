@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 @dataclass
 class Score(DataObj):
-    id: str
     cursor_id: str
     score: int
+    
+    @property
+    def id(self):
+        return self.cursor_id
