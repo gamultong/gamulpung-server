@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, CursorQuitPayload, ConnClosedPayload
+    EventCollection, CursorQuitPayload, ConnClosedPayload
 )
 
 from data.cursor import Cursor
@@ -12,7 +12,8 @@ from receiver.internal.conn_closed import (
     get_watchers, get_watchings, multicast_cursor_quit
 )
 
-from .test_tools import get_cur_set, PathPatch
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
@@ -33,7 +34,7 @@ class MulticastCursorQuit_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cur_a.id, cur_b.id],
             message=Message(
-                event=EventEnum.CURSOR_QUIT,
+                event=EventCollection.CURSOR_QUIT,
                 payload=CursorQuitPayload(id=cur_c.id)
             )
         )
@@ -77,7 +78,7 @@ def mock_conn_closed_receiver_dependency(func):
 class ConnClosedReceiver_TestCase(AsyncTestCase):
     def setUp(self):
         self.input_message = Message(
-            event=EventEnum.CONN_CLOSED,
+            event=EventCollection.CONN_CLOSED,
             header={"sender": cursor_a.id},
             payload=ConnClosedPayload()
         )
