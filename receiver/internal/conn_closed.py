@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, ConnClosedPayload, CursorQuitPayload, ErrorPayload
+    EventCollection, ConnClosedPayload, CursorQuitPayload, ErrorPayload
 )
 
 from handler.cursor import CursorHandler
@@ -10,11 +10,11 @@ from data.cursor import Cursor
 
 from config import VIEW_SIZE_LIMIT
 
-from .utils import multicast, unwatch
+from .utils import multicast, unwatch, get_watchers
 
 
 class ConnClosedReceiver:
-    @EventBroker.add_receiver(EventEnum.CONN_CLOSED)
+    @EventBroker.add_receiver(EventCollection.CONN_CLOSED)
     @staticmethod
     async def receive_conn_closed(message: Message[ConnClosedPayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -36,17 +36,11 @@ def get_watchings(cursor: Cursor) -> list[Cursor]:
     return [CursorHandler.get_cursor(id) for id in watchers_id]
 
 
-def get_watchers(cursor: Cursor) -> list[Cursor]:
-    watchers_id = CursorHandler.get_watchers_id(cursor.id)
-
-    return [CursorHandler.get_cursor(id) for id in watchers_id]
-
-
 async def multicast_cursor_quit(target_conns: list[Cursor], cursor: Cursor):
     await multicast(
         target_conns=[c.id for c in target_conns],
         message=Message(
-            event=EventEnum.CURSOR_QUIT,
+            event=EventCollection.CURSOR_QUIT,
             payload=CursorQuitPayload(id=cursor.id)
         )
     )

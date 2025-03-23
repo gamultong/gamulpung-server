@@ -39,24 +39,6 @@ class MulticastCursorQuit_TestCase(AsyncTestCase):
         )
 
 
-class GetWatchers_TestCase(TestCase):
-    @patch("CursorHandler.get_watchers_id")
-    @patch("CursorHandler.get_cursor")
-    def test_get_watchers(self, get_cursor: MagicMock, get_watchers_id: MagicMock):
-        cur_main = Cursor.create("main")
-        watchers = get_cur_set(3)
-
-        get_watchers_id.return_value = [c.id for c in watchers]
-        get_cursor.side_effect = watchers
-
-        result = get_watchers(cur_main)
-
-        self.assertListEqual(result, watchers)
-
-        get_watchers_id.assert_called_once_with(cur_main.id)
-        get_cursor.assert_has_calls(calls=[call(c.id) for c in watchers])
-
-
 class GetWatchings_TestCase(TestCase):
     @patch("CursorHandler.get_watching_id")
     @patch("CursorHandler.get_cursor")

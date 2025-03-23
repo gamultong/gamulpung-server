@@ -5,11 +5,11 @@ from data.payload import EventCollection, CursorsPayload, CursorReviveAtPayload
 
 from receiver.internal.utils import (
     multicast, watch, unwatch,
-    publish_new_cursors, fetch_tiles
+    publish_new_cursors, fetch_tiles, get_watchers
 )
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock, call
 
 from .test_tools import assertMulticast
 
@@ -61,7 +61,6 @@ class FetchTiles_TestCase(AsyncTestCase):
 
         fetch_mock.assert_called_once_with(start, end)
         tiles.hide_info.assert_called_once()
-
 
 
 cur_A = Cursor.create("A")
@@ -144,3 +143,21 @@ class PublishNewCursors_TestCase(AsyncTestCase):
                 )
             )
         )
+
+
+class GetWatchers_TestCase(TestCase):
+    @patch("handler.cursor.CursorHandler.get_watchers_id")
+    @patch("handler.cursor.CursorHandler.get_cursor")
+    def test_get_watchers(self, get_cursor: MagicMock, get_watchers_id: MagicMock):
+        cur_main = Cursor.create("main")
+        watchers = [Cursor.create("A"), Cursor.create("B")]
+
+        get_watchers_id.return_value = [c.id for c in watchers]
+        get_cursor.side_effect = watchers
+
+        result = get_watchers(cur_main)
+
+        self.assertListEqual(result, watchers)
+
+        get_watchers_id.assert_called_once_with(cur_main.id)
+        get_cursor.assert_has_calls(calls=[call(c.id) for c in watchers])
