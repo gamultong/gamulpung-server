@@ -4,7 +4,7 @@ from handler.conn import ConnectionManager
 from data.board import Section
 from receiver import *
 from event.message import Message
-from data.payload import EventEnum, ErrorPayload
+from data.payload import EventCollection, ErrorPayload
 from config import VIEW_SIZE_LIMIT
 
 app = FastAPI()
@@ -44,7 +44,7 @@ async def session(ws: WebSocket):
             break
         except Exception as e:
             await conn.send(Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg=e)
             ))
 

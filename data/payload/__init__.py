@@ -1,6 +1,8 @@
 from .internal.payload import (
-    EventEnum,
+    EventCollection,
     ClickType,
+    IdPayload,
+    DataPayload, 
     ErrorPayload,
     FetchTilesPayload,
     TilesPayload,
@@ -22,5 +24,6 @@ from .internal.payload import (
     YouDiedPayload,
     SetViewSizePayload,
     SetFlagPayload,
-    OpenTilePayload
+    OpenTilePayload,
+    EventEnum
 )

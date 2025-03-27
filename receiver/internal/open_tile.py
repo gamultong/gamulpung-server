@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, 
+    EventCollection, 
     OpenTilePayload, TilesOpenedPayload,
     YouDiedPayload, CursorReviveAtPayload, CursorsPayload
 )
@@ -35,7 +35,7 @@ async def get_tile_if_openable(cursor:Cursor):
     return tile
 
 class OpenTileReceiver():
-    @EventBroker.add_receiver(EventEnum.OPEN_TILE)
+    @EventBroker.add_receiver(EventCollection.OPEN_TILE)
     @staticmethod
     async def receive_open_tile(message: Message[OpenTilePayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -112,7 +112,7 @@ async def multicast_tiles_opened(target_conns: list[Cursor], point_range: PointR
     await multicast(
         target_conns=[c.id for c in target_conns],
         message=Message(
-            event=EventEnum.TILES_OPENED,
+            event=EventCollection.TILES_OPENED,
             payload=TilesOpenedPayload(
                 start_p=point_range.top_left,
                 end_p=point_range.bottom_right,
@@ -126,7 +126,7 @@ async def multicast_you_died(target_conns: list[Cursor]):
         await multicast(
             target_conns=[cursor.id],
             message=Message(
-                event=EventEnum.YOU_DIED,
+                event=EventCollection.YOU_DIED,
                 payload=YouDiedPayload(revive_at=cursor.revive_at.astimezone().isoformat())
             )
         )
@@ -135,7 +135,7 @@ async def multicast_cursors_died(target_conns: list[Cursor], cursors: list[Curso
     await multicast(
         target_conns=[c.id for c in target_conns],
         message=Message(
-            event=EventEnum.CURSORS_DIED,
+            event=EventCollection.CURSORS_DIED,
             payload=CursorsPayload(
                 cursors=[CursorReviveAtPayload(
                     id=cursor.id,

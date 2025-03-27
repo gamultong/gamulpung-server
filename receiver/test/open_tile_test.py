@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, 
+    EventCollection, 
     OpenTilePayload, TilesOpenedPayload,
     YouDiedPayload, CursorReviveAtPayload, CursorsPayload
 )
@@ -26,7 +26,8 @@ from receiver.internal.open_tile import (
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
-from .test_tools import get_cur_set, PathPatch
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
 
 patch = PathPatch("receiver.internal.open_tile")
 
@@ -188,7 +189,7 @@ class MulticastOpenTile_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cur.id for cur in [cur_a, cur_b]],
             message=Message(
-                event=EventEnum.TILES_OPENED,
+                event=EventCollection.TILES_OPENED,
                 payload=TilesOpenedPayload(
                     start_p=point_range.top_left,
                     end_p=point_range.bottom_right,
@@ -209,14 +210,14 @@ class MulticastOpenTile_TestCase(AsyncTestCase):
             call(
                 target_conns=[cur_a.id],
                 message=Message(
-                    event=EventEnum.YOU_DIED,
+                    event=EventCollection.YOU_DIED,
                     payload=YouDiedPayload(revive_at=cur_a.revive_at.astimezone().isoformat())
                 )
             ),
             call(
                 target_conns=[cur_b.id],
                 message=Message(
-                    event=EventEnum.YOU_DIED,
+                    event=EventCollection.YOU_DIED,
                     payload=YouDiedPayload(revive_at=cur_b.revive_at.astimezone().isoformat())
                 )
             )
@@ -233,7 +234,7 @@ class MulticastOpenTile_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cur.id for cur in [cur_a, cur_b]],
             message=Message(
-                event=EventEnum.CURSORS_DIED,
+                event=EventCollection.CURSORS_DIED,
                 payload=CursorsPayload(
                     cursors=[CursorReviveAtPayload(
                         id=cursor.id,
@@ -289,7 +290,7 @@ tiles_str = "tiles string"
 open_range = PointRange(Point(0, 0), Point(0, 0))
 
 example_message = Message(
-    event=EventEnum.OPEN_TILE,
+    event=EventCollection.OPEN_TILE,
     header={"sender": cursor_a.id},
     payload=OpenTilePayload()
 )

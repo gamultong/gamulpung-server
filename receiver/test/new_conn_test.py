@@ -3,7 +3,7 @@ from event.message import Message
 from data.board import Point, Tiles, Tile
 from data.cursor import Cursor
 from data.payload import (
-    NewConnPayload, EventEnum,
+    NewConnPayload, EventCollection,
     MyCursorPayload, TilesPayload
 )
 from config import VIEW_SIZE_LIMIT
@@ -92,7 +92,7 @@ class NewConnMulticast_TestCase(AsyncTestCase):
         cursor_b = Cursor.create("B")
 
         expected_message = Message(
-            event=EventEnum.MY_CURSOR,
+            event=EventCollection.MY_CURSOR,
             payload=MyCursorPayload(
                 id=cursor_a.id,
                 color=cursor_a.color,
@@ -118,7 +118,7 @@ class NewConnMulticast_TestCase(AsyncTestCase):
         tiles = Tiles(data=bytearray())
 
         expected_message = Message(
-            event=EventEnum.TILES,
+            event=EventCollection.TILES,
             payload=TilesPayload(
                 start_p=start,
                 end_p=end,
@@ -143,7 +143,7 @@ start, end = Point(0, 0), Point(1, -1)
 tiles = Tiles(data=bytearray())
 payload = NewConnPayload(conn_id="A", width=1, height=1)
 example_input = Message(
-    event=EventEnum.NEW_CONN,
+    event=EventCollection.NEW_CONN,
     payload=payload
 )
 

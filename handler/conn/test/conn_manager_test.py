@@ -9,7 +9,7 @@ from data.conn import Conn
 from handler.conn import ConnectionManager
 from event.message import Message
 from data.payload import (
-    TilesPayload, EventEnum, NewConnPayload, ConnClosedPayload
+    TilesPayload, EventCollection, NewConnPayload, ConnClosedPayload
 )
 from event.broker import EventBroker
 
@@ -40,7 +40,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         got: Message[NewConnPayload] = mock.mock_calls[0].args[0]
 
         self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, EventEnum.NEW_CONN)
+        self.assertEqual(got.event, EventCollection.NEW_CONN)
         self.assertEqual(type(got.payload), NewConnPayload)
         self.assertEqual(got.payload.conn_id, con_obj.id)
         self.assertEqual(got.payload.width, width)
@@ -83,7 +83,7 @@ class ConnectionManagerTestCase(unittest.IsolatedAsyncioTestCase):
         mock.assert_called_once()
         got: Message[ConnClosedPayload] = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
-        self.assertEqual(got.event, EventEnum.CONN_CLOSED)
+        self.assertEqual(got.event, EventCollection.CONN_CLOSED)
         self.assertEqual(type(got.payload), ConnClosedPayload)
 
     @patch("event.broker.EventBroker.publish")

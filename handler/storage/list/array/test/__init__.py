@@ -1,0 +1,2 @@
+from .space_test import ArrayListSpace_TestCase
+from .storage_test import ArrayListStorage_TestCase

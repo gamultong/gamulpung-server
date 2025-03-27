@@ -3,8 +3,9 @@ from dataclasses import dataclass
 
 @dataclass
 class Score(DataObj):
-    cursor_id: str
-    score: int
+    cursor_id:str
+    score    :int
+    rank     :int|None = None
     
     @property
     def id(self):

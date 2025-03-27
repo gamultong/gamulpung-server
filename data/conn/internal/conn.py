@@ -33,3 +33,4 @@ class Conn(DataObj):
         except (ConnectionClosed, WebSocketDisconnect):
             # 커넥션이 종료되었는데도 타이밍 문제로 인해 커넥션을 가져왔을 수 있음.
             return
+

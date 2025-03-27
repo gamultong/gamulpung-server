@@ -1,7 +1,7 @@
 from event.message import Message
 from data.cursor import Cursor
 from data.board import Point, Tiles
-from data.payload import EventEnum, CursorsPayload, CursorReviveAtPayload
+from data.payload import EventCollection, CursorsPayload, CursorReviveAtPayload
 
 from receiver.internal.utils import (
     multicast, watch, unwatch,
@@ -132,7 +132,7 @@ class PublishNewCursors_TestCase(AsyncTestCase):
             self, multicast.mock_calls[0],
             target_conns=[cur.id for cur in target_cursors],
             message=Message(
-                event=EventEnum.CURSORS,
+                event=EventCollection.CURSORS,
                 payload=CursorsPayload(
                     cursors=[CursorReviveAtPayload(
                         id=cursor.id,

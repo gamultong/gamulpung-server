@@ -1,13 +1,18 @@
 from event.payload import Payload, ParsablePayload
-
+from typing import Generic, TypeVar
 from data.board import Point
 from data.cursor import Color
 
 from dataclasses import dataclass
 from enum import Enum
 
+DATA_TYPE = TypeVar(
+    "DATA_TYPE"
+)
 
 class EventEnum(str, Enum):
+    pass
+class EventCollection(EventEnum):
     ERROR = "error"
     SEND_CHAT = "send-chat"
     CHAT = "chat"
@@ -36,6 +41,16 @@ class ClickType(str, Enum):
     GENERAL_CLICK = "GENERAL_CLICK"
     SPECIAL_CLICK = "SPECIAL_CLICK"
 
+
+
+@dataclass
+class IdPayload(Payload):
+    id: str
+
+
+@dataclass
+class DataPayload(Generic[DATA_TYPE], Payload):
+    data:ParsablePayload[DATA_TYPE]
 
 @dataclass
 class ErrorPayload(Payload):

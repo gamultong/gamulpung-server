@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, MovingPayload, MovedPayload, ErrorPayload
+    EventCollection, MovingPayload, MovedPayload, ErrorPayload
 )
 
 from handler.cursor import CursorHandler
@@ -55,7 +55,7 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="moving to current position is not allowed")
             )
         )
@@ -68,7 +68,7 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="only moving to 8 nearby tiles is allowed")
             )
         )
@@ -81,7 +81,7 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="moving to closed tile is not available")
             )
         )
@@ -133,7 +133,7 @@ class MovingMulticast_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cursor_a, cursor_b],
             message=Message(
-                event=EventEnum.MOVED,
+                event=EventCollection.MOVED,
                 payload=MovedPayload(
                     id=cursor_c.id,
                     new_position=cursor_c.position
@@ -160,7 +160,7 @@ class PickUnwatchingCursors_TestCase(TestCase):
 cur_a = Cursor.create("A")
 position = Point(0, 0)
 message = Message(
-    event=EventEnum.MOVING,
+    event=EventCollection.MOVING,
     header={"sender" : cur_a.id},
     payload=MovingPayload(
         position=position

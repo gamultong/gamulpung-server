@@ -2,7 +2,7 @@ from event.message import Message
 
 from data.board import Point, Tiles, Tile
 from data.payload import (
-    EventEnum, ErrorPayload,
+    EventCollection, ErrorPayload,
     FetchTilesPayload, TilesPayload
 )
 from config import VIEW_SIZE_LIMIT
@@ -36,7 +36,7 @@ class ValidateFetchRange_TestCase(TestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
             )
         )
@@ -50,7 +50,7 @@ class ValidateFetchRange_TestCase(TestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="start_p should be left-top, and end_p should be right-bottom")
             )
         )
@@ -88,7 +88,7 @@ class FetchTilesReceiver_TestCase(AsyncTestCase):
 
         # call
         await FetchTilesReceiver.receive_fetch_tiles(Message(
-            event=EventEnum.FETCH_TILES,
+            event=EventCollection.FETCH_TILES,
             header={"sender": sender},
             payload=FetchTilesPayload(
                 start_p=start,
@@ -105,7 +105,7 @@ class FetchTilesReceiver_TestCase(AsyncTestCase):
             self=self, call=multicast.mock_calls[0],
             target_conns=[sender],
             message=Message(
-                event=EventEnum.TILES,
+                event=EventCollection.TILES,
                 payload=TilesPayload(
                     start_p=start,
                     end_p=end,
@@ -127,7 +127,7 @@ class FetchTilesReceiver_TestCase(AsyncTestCase):
         sender = "example"
         # expect
         error_msg = Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg="example message")
         )
 
@@ -136,7 +136,7 @@ class FetchTilesReceiver_TestCase(AsyncTestCase):
 
         # call
         await FetchTilesReceiver.receive_fetch_tiles(Message(
-            event=EventEnum.FETCH_TILES,
+            event=EventCollection.FETCH_TILES,
             header={"sender": sender},
             payload=FetchTilesPayload(
                 start_p=start,

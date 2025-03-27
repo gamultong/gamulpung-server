@@ -1,1 +1,1 @@
-from .internal.base_data import DataObj
+from .internal.base_data import DataObj, copy

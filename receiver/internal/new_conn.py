@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, NewConnPayload,
+    EventCollection, NewConnPayload,
     MyCursorPayload, TilesPayload
 )
 
@@ -22,7 +22,7 @@ from .utils import (
 
 
 class NewConnReceiver():
-    @EventBroker.add_receiver(EventEnum.NEW_CONN)
+    @EventBroker.add_receiver(EventCollection.NEW_CONN)
     @staticmethod
     async def receive_new_conn(message: Message[NewConnPayload]):
         cursor = await new_cursor(message.payload)
@@ -89,7 +89,7 @@ async def multicast_my_cursor(target_conns: list[Cursor], cursor: Cursor):
     await multicast(
         target_conns=[cursor.id for cursor in target_conns],
         message=Message(
-            event=EventEnum.MY_CURSOR,
+            event=EventCollection.MY_CURSOR,
             payload=MyCursorPayload(
                 id=cursor.id,
                 position=cursor.position,
@@ -103,7 +103,7 @@ async def multicast_tiles(target_conns: list[Cursor], start: Point, end: Point, 
     await multicast(
     target_conns=[cursor.id for cursor in target_conns],
     message=Message(
-        event=EventEnum.TILES,
+        event=EventCollection.TILES,
         payload=TilesPayload(
             start_p=start,
             end_p=end,

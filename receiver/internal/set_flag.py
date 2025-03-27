@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, SetFlagPayload,FlagSetPayload
+    EventCollection, SetFlagPayload,FlagSetPayload
 )
 
 from handler.board import BoardHandler
@@ -14,7 +14,7 @@ from .utils import multicast
 
 
 class SetFlagReceiver():
-    @EventBroker.add_receiver(EventEnum.SET_FLAG)
+    @EventBroker.add_receiver(EventCollection.SET_FLAG)
     @staticmethod
     async def receive_set_flag(message: Message[SetFlagPayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -42,7 +42,7 @@ async def multicast_flag_set(target_conns: list[Cursor], tile: Tile, position: P
     await multicast(
             target_conns=[c.id for c in target_conns],
             message=Message(
-                event=EventEnum.FLAG_SET,
+                event=EventCollection.FLAG_SET,
                 payload=FlagSetPayload(
                     position=position,
                     is_set=tile.is_flag,

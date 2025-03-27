@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, ClickType, PointingPayload,PointerSetPayload,
+    EventCollection, ClickType, PointingPayload,PointerSetPayload,
     ErrorPayload, OpenTilePayload, SetFlagPayload
 )
 
@@ -20,8 +20,8 @@ from receiver.internal.pointing import (
     get_watchers
 )
 
-from .test_tools import get_cur_set, PathPatch
-
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
 
@@ -43,7 +43,7 @@ class MulticastPointerSet_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cur_a.id, cur_b.id],
             message=Message(
-                event=EventEnum.POINTER_SET,
+                event=EventCollection.POINTER_SET,
                 payload=PointerSetPayload(
                     id=cur_c.id,
                     pointer=cur_c.pointer
@@ -71,7 +71,7 @@ class ValidatePointable_TestCase(TestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="dead cursor cannot do pointing")
             )
         )
@@ -84,7 +84,7 @@ class ValidatePointable_TestCase(TestCase):
         self.assertEqual(
             result,
             Message(
-                event=EventEnum.ERROR,
+                event=EventCollection.ERROR,
                 payload=ErrorPayload(msg="pointer is out of cursor view")
             )
         )
@@ -98,7 +98,7 @@ class PublishPointing_TestCase(AsyncTestCase):
 
         mock.assert_called_once_with(
             message=Message(
-                event=EventEnum.OPEN_TILE,
+                event=EventCollection.OPEN_TILE,
                 header={"sender": cur.id},
                 payload=OpenTilePayload()
             )
@@ -112,7 +112,7 @@ class PublishPointing_TestCase(AsyncTestCase):
 
         mock.assert_called_once_with(
             message=Message(
-                event=EventEnum.SET_FLAG,
+                event=EventCollection.SET_FLAG,
                 header={"sender": cur.id},
                 payload=SetFlagPayload()
             )
@@ -155,7 +155,7 @@ def mock_pointing_receiver_dependency(func):
 class PointingReceiver_TestCase(AsyncTestCase):
     def setUp(self):
         self.input_message = Message(
-            event=EventEnum.POINTING,
+            event=EventCollection.POINTING,
             header={"sender": cursor_a.id},
             payload=PointingPayload(
                 click_type=None,
@@ -194,7 +194,7 @@ class PointingReceiver_TestCase(AsyncTestCase):
             publish_open_tile: AsyncMock,
             publish_set_flag: AsyncMock
     ):
-        error_msg = Message(event=EventEnum.ERROR, payload=None)
+        error_msg = Message(event=EventCollection.ERROR, payload=None)
         validate_pointable.return_value = error_msg
 
         await PointingReceiver.receive_pointing(self.input_message)

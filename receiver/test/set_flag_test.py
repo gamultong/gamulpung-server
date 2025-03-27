@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, SetFlagPayload,FlagSetPayload
+    EventCollection, SetFlagPayload,FlagSetPayload
 )
 
 from handler.board import BoardHandler
@@ -18,8 +18,8 @@ from receiver.internal.set_flag import (
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
-from .test_tools import get_cur_set, PathPatch
-
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
 
 patch = PathPatch("receiver.internal.set_flag")
 
@@ -42,7 +42,7 @@ class MulticastSetFlag_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             target_conns=[cur.id for cur in target_conns],
             message=Message(
-                event=EventEnum.FLAG_SET,
+                event=EventCollection.FLAG_SET,
                 payload=FlagSetPayload(
                     position=position,
                     is_set=tile.is_flag,
@@ -120,7 +120,7 @@ def mock_set_flag_receiver_dependency(func):
 class SetFlagReceiver_TestCase(AsyncTestCase):
     def setUp(self):
         self.input_message = Message(
-            event=EventEnum.SET_FLAG,
+            event=EventCollection.SET_FLAG,
             header={"sender": cursor_a.id},
             payload=SetFlagPayload()
         )

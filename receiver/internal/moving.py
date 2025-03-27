@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, MovingPayload, MovedPayload, ErrorPayload
+    EventCollection, MovingPayload, MovedPayload, ErrorPayload
 )
 
 from handler.board import BoardHandler
@@ -17,7 +17,7 @@ from .utils import (
 
 
 class MovingReceiver():
-    @EventBroker.add_receiver(EventEnum.MOVING)
+    @EventBroker.add_receiver(EventCollection.MOVING)
     @staticmethod
     async def receive_moving(message: Message[MovingPayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -81,7 +81,7 @@ async def multicast_moved(target_conns: list[Cursor], cursor: Cursor):
     await multicast(
         target_conns=target_conns,
         message=Message(
-            event=EventEnum.MOVED,
+            event=EventCollection.MOVED,
             payload=MovedPayload(
                 id=cursor.id,
                 new_position=cursor.position
@@ -104,14 +104,14 @@ async def validate_new_position(cursor: Cursor, new_position: Point) -> Message 
     is_moving_same_position = new_position == cursor.position
     if is_moving_same_position:
         return Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg="moving to current position is not allowed")
         )
     
     is_movable = cursor.check_interactable(new_position)
     if not is_movable:
         return Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg="only moving to 8 nearby tiles is allowed")
         )
 
@@ -119,6 +119,6 @@ async def validate_new_position(cursor: Cursor, new_position: Point) -> Message 
     tile = Tile.from_int(tiles.data[0])
     if not tile.is_open:
         return Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg="moving to closed tile is not available")
         )

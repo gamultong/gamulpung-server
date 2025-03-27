@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, SetViewSizePayload, ErrorPayload
+    EventCollection, SetViewSizePayload, ErrorPayload
 )
 
 from handler.cursor import CursorHandler
@@ -35,7 +35,7 @@ class ValidateViewSize_TestCase(TestCase):
 
         result = validate_view_size(cursor, cursor.width, cursor.height)
         expected_message = Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg=f"view size is same as current size")
         )
 
@@ -47,7 +47,7 @@ class ValidateViewSize_TestCase(TestCase):
 
         result = validate_view_size(cursor, new_width, new_height)
         expected_message = Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
         )
 
@@ -93,7 +93,7 @@ other_cursor = Cursor.create("B")
 new_width, new_height = 2,2
 
 example_input = Message(
-    event=EventEnum.SET_VIEW_SIZE,
+    event=EventCollection.SET_VIEW_SIZE,
     header={"sender": cursor.id},
     payload=SetViewSizePayload(height=new_height, width=new_width)
 )

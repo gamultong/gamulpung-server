@@ -1,7 +1,7 @@
 from typing import Generic, TypeVar
 from event.payload import Payload
 from data.payload import (
-    EventEnum,
+    EventCollection,
     FetchTilesPayload,
     TilesPayload,
     SendChatPayload,
@@ -20,12 +20,12 @@ EVENT_TYPE = TypeVar(
 )
 
 DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
-    EventEnum.FETCH_TILES: FetchTilesPayload,
-    EventEnum.TILES: TilesPayload,
-    EventEnum.POINTING: PointingPayload,
-    EventEnum.MOVING: MovingPayload,
-    EventEnum.SET_VIEW_SIZE: SetViewSizePayload,
-    EventEnum.SEND_CHAT: SendChatPayload
+    EventCollection.FETCH_TILES: FetchTilesPayload,
+    EventCollection.TILES: TilesPayload,
+    EventCollection.POINTING: PointingPayload,
+    EventCollection.MOVING: MovingPayload,
+    EventCollection.SET_VIEW_SIZE: SetViewSizePayload,
+    EventCollection.SEND_CHAT: SendChatPayload
 }
 
 @dataclass

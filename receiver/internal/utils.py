@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, CursorsPayload, CursorReviveAtPayload
+    EventCollection, CursorsPayload, CursorReviveAtPayload
 )
 
 from handler.cursor import CursorHandler
@@ -48,7 +48,7 @@ def unwatch(watchers: list[Cursor], watchings: list[Cursor]):
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
     message = Message(
-        event=EventEnum.CURSORS,
+        event=EventCollection.CURSORS,
         payload=CursorsPayload(
             cursors=[CursorReviveAtPayload(
                 id=cursor.id,
