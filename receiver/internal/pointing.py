@@ -11,7 +11,7 @@ from handler.cursor import CursorHandler
 from data.board import Point, Tile, Tiles, PointRange
 from data.cursor import Cursor
 
-from .utils import multicast
+from .utils import multicast, get_watchers
 
 
 class PointingReceiver():
@@ -32,7 +32,7 @@ class PointingReceiver():
         watchers = get_watchers(cursor=cursor)
         if len(watchers) > 0:
             await multicast_pointer_set(
-                target_conns=[cursor] + watchers, 
+                target_conns=[cursor] + watchers,
                 cursor=cursor
             )
 
@@ -41,12 +41,6 @@ class PointingReceiver():
         if click_type == ClickType.SPECIAL_CLICK:
             await publish_set_flag(cursor=cursor)
 
-def get_watchers(cursor: Cursor):
-    watcher_ids = CursorHandler.get_watchers_id(cursor.id)
-    return [
-        CursorHandler.get_cursor(id)
-        for id in watcher_ids
-    ]
 
 async def publish_open_tile(cursor: Cursor):
     await EventBroker.publish(message=Message(
@@ -55,12 +49,14 @@ async def publish_open_tile(cursor: Cursor):
         payload=OpenTilePayload()
     ))
 
+
 async def publish_set_flag(cursor: Cursor):
     await EventBroker.publish(message=Message(
         event=EventCollection.SET_FLAG,
         header={"sender": cursor.id},
         payload=SetFlagPayload()
     ))
+
 
 async def multicast_pointer_set(target_conns: list[Cursor], cursor: Cursor):
     await multicast(
@@ -73,6 +69,7 @@ async def multicast_pointer_set(target_conns: list[Cursor], cursor: Cursor):
             )
         )
     )
+
 
 def validate_pointable(cursor: Cursor, point: Point):
     if cursor.revive_at is not None:

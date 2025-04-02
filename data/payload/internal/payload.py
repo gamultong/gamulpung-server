@@ -10,8 +10,11 @@ DATA_TYPE = TypeVar(
     "DATA_TYPE"
 )
 
+
 class EventEnum(str, Enum):
     pass
+
+
 class EventCollection(EventEnum):
     ERROR = "error"
     SEND_CHAT = "send-chat"
@@ -42,7 +45,6 @@ class ClickType(str, Enum):
     SPECIAL_CLICK = "SPECIAL_CLICK"
 
 
-
 @dataclass
 class IdPayload(Payload):
     id: str
@@ -50,7 +52,8 @@ class IdPayload(Payload):
 
 @dataclass
 class DataPayload(Generic[DATA_TYPE], Payload):
-    data:ParsablePayload[DATA_TYPE]
+    data: ParsablePayload[DATA_TYPE]
+
 
 @dataclass
 class ErrorPayload(Payload):
@@ -140,6 +143,7 @@ class ConnClosedPayload(Payload):
 class CursorQuitPayload(Payload):
     id: str
 
+
 @dataclass
 class CursorReviveAtPayload(Payload):
     id: str
@@ -153,6 +157,7 @@ class CursorReviveAtPayload(Payload):
 class CursorsPayload(Payload):
     cursors: list[CursorReviveAtPayload]
 
+
 @dataclass
 class MyCursorPayload(Payload):
     id: str
@@ -165,14 +170,17 @@ class MyCursorPayload(Payload):
 class YouDiedPayload(Payload):
     revive_at: str
 
+
 @dataclass
 class SetViewSizePayload(Payload):
     width: int
     height: int
 
+
 @dataclass
 class SetFlagPayload(Payload):
     pass
+
 
 @dataclass
 class OpenTilePayload(Payload):

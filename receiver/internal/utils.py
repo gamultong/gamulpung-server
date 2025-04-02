@@ -86,3 +86,9 @@ def get_view_range_points(postion: Point, width: int, height: int):
     top_left = Point(x=postion.x - width, y=postion.y + height)
     bottom_right = Point(x=postion.x + width, y=postion.y - height)
     return top_left, bottom_right
+
+
+def get_watchers(cursor: Cursor) -> list[Cursor]:
+    watchers_id = CursorHandler.get_watchers_id(cursor.id)
+
+    return [CursorHandler.get_cursor(id) for id in watchers_id]
