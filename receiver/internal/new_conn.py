@@ -7,6 +7,8 @@ from data.payload import (
 
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
+from handler.score import ScoreHandler
+
 
 from data.board import Point, Tiles
 from data.cursor import Cursor
@@ -25,7 +27,11 @@ class NewConnReceiver():
     @EventBroker.add_receiver(EventCollection.NEW_CONN)
     @staticmethod
     async def receive_new_conn(message: Message[NewConnPayload]):
-        cursor = await new_cursor(message.payload)
+        cursor = await new_cursor(
+            message.payload.conn_id, 
+            message.payload.width, 
+            message.payload.height
+        )
 
         start, end = get_view_range_points(cursor.position, cursor.width, cursor.height)
 
@@ -58,15 +64,17 @@ class NewConnReceiver():
 
 
 
-async def new_cursor(payload: NewConnPayload):
+async def new_cursor(conn_id: str, width: int, height: int):
     position = await BoardHandler.get_random_open_position()
 
     cursor = CursorHandler.create_cursor(
-        conn_id=payload.conn_id,
+        conn_id=conn_id,
         position=position,
-        width=payload.width, 
-        height=payload.height
+        width=width, 
+        height=height
     )
+
+    await ScoreHandler.create(cursor.id)
 
     return cursor
 
