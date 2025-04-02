@@ -38,22 +38,20 @@ class NewConnReceiver():
         await multicast_my_cursor(target_conns=[cursor],cursor=cursor)
 
         cursors_in_view = fetch_cursors_in_view(cursor)
-        if len(cursors_in_view) > 0:
-            watch(watchers=[cursor], watchings=cursors_in_view)
 
-            await publish_new_cursors(
-                target_cursors=[cursor],
-                cursors=cursors_in_view
-            )
+        watch(watchers=[cursor], watchings=cursors_in_view)
+        await publish_new_cursors(
+            target_cursors=[cursor],
+            cursors=cursors_in_view
+        )
 
         cursors_with_view_including = fetch_with_view_including(cursor)
-        if len(cursors_with_view_including) > 0:
-            watch(watchers=cursors_with_view_including, watchings=[cursor])
 
-            await publish_new_cursors(
-                target_cursors=cursors_with_view_including,
-                cursors=[cursor]
-            )
+        watch(watchers=cursors_with_view_including, watchings=[cursor])
+        await publish_new_cursors(
+            target_cursors=cursors_with_view_including,
+            cursors=[cursor],
+        )
 
         tiles = await fetch_tiles(start, end)
         

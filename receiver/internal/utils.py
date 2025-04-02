@@ -47,6 +47,9 @@ def unwatch(watchers: list[Cursor], watchings: list[Cursor]):
 
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
+    if len(cursors) == 0:
+        return None
+
     message = Message(
         event=EventCollection.CURSORS,
         payload=CursorsPayload(

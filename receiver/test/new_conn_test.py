@@ -159,8 +159,8 @@ cursors_with_view_including = [cursor_c, cursor_d]
 def mock_new_conn_receiver_dependency(func):
     func = patch("new_cursor", return_value=cursor_a)(func)
     func = patch("get_view_range_points", return_value=(start, end))(func)
-    func = patch("fetch_cursors_in_view", return_value=[])(func)
-    func = patch("fetch_with_view_including", return_value=[])(func)
+    func = patch("fetch_cursors_in_view", return_value=cursors_in_view)(func)
+    func = patch("fetch_with_view_including", return_value=cursors_with_view_including)(func)
     func = patch("publish_new_cursors")(func)
     func = patch("fetch_tiles", return_value=tiles)(func)
     func = patch("watch")(func)
@@ -173,7 +173,7 @@ def mock_new_conn_receiver_dependency(func):
 
 class NewConnReceiver_TestCase(AsyncTestCase):
     @mock_new_conn_receiver_dependency
-    async def test_common_no_watcher_no_watching(
+    async def test_common(
         self,
         new_cursor:AsyncMock,
         get_view_range_points:MagicMock,
@@ -188,71 +188,24 @@ class NewConnReceiver_TestCase(AsyncTestCase):
         await NewConnReceiver.receive_new_conn(example_input)
         
         new_cursor.assert_called_once_with(payload.conn_id, payload.width, payload.height)
-        # get_view_range_points.assert_called_once_with(cursor_a.position, cursor_a.width, cursor_a.height)
+
         multicast_my_cursor.assert_called_once_with(target_conns=[cursor_a], cursor=cursor_a)
-        # fetch_cursors_in_view.assert_called_once_with(cursor_a)
-        # fetch_with_view_including.assert_called_once_with(cursor_a)
         
-        # 분기 호출 x
-        watch.assert_not_called()
-        publish_new_cursors.assert_not_called()
-        
-        # fetch_tiles.assert_called_once_with(start, end)
+
+        watch.assert_has_calls(
+            (
+                call(watchers=[cursor_a], watchings=cursors_in_view),
+                call(watchers=cursors_with_view_including, watchings=[cursor_a])
+            )
+        )
+        publish_new_cursors.assert_has_calls(
+            (
+                call(target_cursors=[cursor_a],cursors=cursors_in_view),
+                call(target_cursors=cursors_with_view_including,cursors=[cursor_a])
+            )
+        )
+
         multicast_tiles.assert_called_once_with(
             target_conns=[cursor_a], 
             start=start, end=end, tiles=tiles
-        )
-
-    @mock_new_conn_receiver_dependency
-    async def test_cursors_exist_in_view(
-        self,
-        new_cursor:AsyncMock,
-        get_view_range_points:MagicMock,
-        fetch_cursors_in_view:MagicMock,
-        fetch_with_view_including:MagicMock,
-        publish_new_cursors:AsyncMock,
-        fetch_tiles:AsyncMock,
-        watch:MagicMock,
-        multicast_my_cursor:AsyncMock,
-        multicast_tiles:AsyncMock
-    ): 
-        # 분기 조건 설정
-        fetch_cursors_in_view.return_value = cursors_in_view
-
-        await NewConnReceiver.receive_new_conn(example_input)
-
-        watch.assert_called_once_with(
-            watchers=[cursor_a], 
-            watchings=cursors_in_view
-        )
-        publish_new_cursors.assert_called_once_with(
-            target_cursors=[cursor_a],
-            cursors=cursors_in_view
-        )
-    
-    @mock_new_conn_receiver_dependency
-    async def test_watchers_exist(
-        self,
-        new_cursor:AsyncMock,
-        get_view_range_points:MagicMock,
-        fetch_cursors_in_view:MagicMock,
-        fetch_with_view_including:MagicMock,
-        publish_new_cursors:AsyncMock,
-        fetch_tiles:AsyncMock,
-        watch:MagicMock,
-        multicast_my_cursor:AsyncMock,
-        multicast_tiles:AsyncMock
-    ): 
-        # 분기 조건 설정
-        fetch_with_view_including.return_value = cursors_with_view_including
-
-        await NewConnReceiver.receive_new_conn(example_input)
-        
-        watch.assert_called_once_with(
-            watchers=cursors_with_view_including, 
-            watchings=[cursor_a]
-        )
-        publish_new_cursors.assert_called_once_with(
-            target_cursors=cursors_with_view_including,
-            cursors=[cursor_a]
         )
