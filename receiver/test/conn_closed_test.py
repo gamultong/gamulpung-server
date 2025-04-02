@@ -8,7 +8,7 @@ from data.cursor import Cursor
 
 
 from receiver.internal.conn_closed import (
-    ConnClosedReceiver,
+    ConnClosedReceiver, remove_cursor,
     get_watchers, get_watchings, multicast_cursor_quit
 )
 
@@ -58,13 +58,24 @@ class GetWatchings_TestCase(TestCase):
         get_cursor.assert_has_calls(calls=[call(c.id) for c in watchers])
 
 
+class RemoveCursor_Testcase(AsyncTestCase):
+    @patch("CursorHandler.remove_cursor")
+    @patch("ScoreHandler.delete")
+    async def test_remove_cursor(self, delete: AsyncMock, remove_cursor_mock: MagicMock):
+        cur_main = Cursor.create("main")
+
+        await remove_cursor(cur_main)
+
+        remove_cursor_mock.assert_called_once_with(cur_main.id)
+        delete.assert_called_once_with(cur_main.id)
+
 cursor_a = Cursor.create("A")
 cursors = get_cur_set(3)
 
 
 def mock_conn_closed_receiver_dependency(func):
     func = patch("CursorHandler.get_cursor", return_value=cursor_a)(func)
-    func = patch("CursorHandler.remove_cursor")(func)
+    func = patch("remove_cursor")(func)
     func = patch("get_watchers", return_value=cursors)(func)
     func = patch("get_watchings", return_value=cursors)(func)
     func = patch("unwatch")(func)
@@ -100,7 +111,7 @@ class ConnClosedReceiver_TestCase(AsyncTestCase):
             call(watchers=[cursor_a], watchings=cursors),
             call(watchers=cursors, watchings=[cursor_a]),
         ])
-        remove_cursor.assert_called_once_with(cursor_a.id)
+        remove_cursor.assert_called_once_with(cursor_a)
         multicast_cursor_quit.assert_called_once_with(
             target_conns=cursors, cursor=cursor_a
         )
