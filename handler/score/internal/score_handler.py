@@ -70,14 +70,13 @@ class ScoreHandler:
         if current is None:
             raise ScoreNotFoundException()
 
-        score.rank = current.rank
-        score = await cls.__move_rank(score)
+        score = await cls.__update(current, score.value)
+
         message = Message(
             event=ScoreEvent.UPDATED,
             payload=DataPayload(data=current)
         )
         
-        await cls.score_storage.set(score.id, score)
         await EventBroker.publish(message=message)
 
     @classmethod
@@ -86,15 +85,13 @@ class ScoreHandler:
         if current is not None:
             raise ScoreAlreadyExistsException()
 
-        await cls.rank_index.append(id)
+        score = Score(id, 0)
+        score = await cls.__create(score=score)
         
-        score = Score(id, 0, await cls.rank_index.length())
         message = Message(
             event=ScoreEvent.CREATED,
             payload=IdPayload(id=id)
         )
-
-        await cls.score_storage.set(score.id, score)
         await EventBroker.publish(message=message)
 
     @classmethod
@@ -107,8 +104,7 @@ class ScoreHandler:
         if score is None:
             raise ScoreNotFoundException()
 
-        await cls.score_storage.delete(id)
-        await cls.__delete_rank(score)
+        await cls.__delete(score)
         
         await EventBroker.publish(
             message=Message(
@@ -118,56 +114,56 @@ class ScoreHandler:
         )
 
     @classmethod
-    async def __delete_rank(cls, score:Score):
-        for i in range(score.rank, await cls.rank_index.length()):
-            id = await cls.rank_index.get(i)
-            other_score = await cls.score_storage.get(id)
-            other_score.rank -= 1
-            await cls.score_storage.set(id, other_score)
-
+    async def __delete(cls, score:Score):
+        await cls.score_storage.delete(score.id)
         await cls.rank_index.pop(score.rank - 1)
-        
+
+        length = await cls.length()
+        await cls.__adjust_rank_range(score.rank, length)
+
     @classmethod
-    async def __move_rank(cls, score:Score):
-        # score 인자 -> score 변경 O | rank 변경 X
-        # score minus 없다는 기준 
-
-        # 기존 rank 위치 제거
-        # 지금 스코어의 rank 찾기 = O(log N) (지금은 O(N))
-        # 지금 스코어의 rank에 score id 넣기
-        # 이전 rank와 현재 rank 사이에 있는 스코어들에게 rank + 1 = O(N)
-        # 범위: 현재 rank < n <= 이전 rank 
+    async def __create(cls, score:Score):
+        score = score.copy()
+        score.rank = await cls.rank_index.length() + 1
         
-        prev_rank = score.rank
-        await cls.rank_index.pop(score.rank - 1)
-        
-        for i in range(prev_rank - 1):
-            id = await cls.rank_index.get(i)
-            other_score = await cls.score_storage.get(id)
-
-            if other_score.score < score.score:
-                score.rank = other_score.rank
-                await cls.rank_index.insert(other_score.rank - 1, score.id)
-                break
-            
-        for i in range(score.rank, prev_rank):
-            id = await cls.rank_index.get(i)
-            other_score = await cls.score_storage.get(id)
-            other_score.rank += 1 
-            await cls.score_storage.set(id, other_score)
-
+        await cls.rank_index.append(score.id)
+        await cls.score_storage.set(score.id, score)
         return score
 
+    @classmethod
+    async def __update(cls, score: Score, new_value: int):
+        """score가 증가한다고만 가정"""
+        # 이전 score, 증가 new_socre:int
+        score = score.copy()
 
-"""
-기능 정리
+        before_rank = score.rank
+        score.rank = await cls.__find_rank(new_value)
+        score.value = new_value
 
-set
-given score
-when 기존 score X
-then score_storage에 추가 & rank_index에 append & created event 발행
-when 기존 score O
-then rank_index에 변경 범위 모두 rank 수정 후 socre 모두 updated event 발행 
+        await cls.rank_index.pop(before_rank - 1)
+        await cls.rank_index.insert(score.rank - 1, score.id)
+        await cls.score_storage.set(score.id, score)
 
-delete
-"""
+        await cls.__adjust_rank_range(score.rank, before_rank)
+        return score
+
+    @classmethod
+    async def __adjust_rank_range(cls, start_rank:int, before_rank:int):
+        for idx in range(start_rank - 1, before_rank):
+            id = await cls.rank_index.get(idx)
+            score = await cls.score_storage.get(id)
+            
+            score.rank = idx + 1
+            await cls.score_storage.set(score.id, score)
+
+    @classmethod
+    async def __find_rank(cls, value:int):
+        length = await cls.rank_index.length()
+        for i in range(length):
+            id = await cls.rank_index.get(i)
+            score = await cls.score_storage.get(id)
+
+            if score.value < value:
+                return score.rank
+
+        return length

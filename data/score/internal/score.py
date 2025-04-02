@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class Score(DataObj):
     cursor_id:str
-    score    :int
+    value    :int
     rank     :int|None = None
     
     @property
