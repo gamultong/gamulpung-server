@@ -4,10 +4,8 @@ from data.payload import (
     EventCollection, MovingPayload, MovedPayload, ErrorPayload
 )
 
-from handler.cursor import CursorHandler
-
 from data.cursor import Cursor
-from data.board import Point, Tiles, Tile
+from data.board import Point, Tiles, Tile, PointRange
 
 from config import VIEW_SIZE_LIMIT
 
@@ -17,11 +15,18 @@ from receiver.internal.moving import (
     get_new_watchers,
     get_old_watchers,
     multicast_moved,
-    pick_unwatching_cursors
+    pick_unwatching_cursors,
+    get_new_cursors_on_sight,
+    give_reward,
 )
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
+
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
+
+patch = PathPatch("receiver.internal.moving")
 
 class ValidateNewPosition_TestCase(AsyncTestCase):
     def setUp(self):
@@ -40,14 +45,14 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
         )
         return Tiles(data=bytearray([tile.data]))
 
-    @patch("handler.board.BoardHandler.fetch")
+    @patch("BoardHandler.fetch")
     async def test_normal(self, mock: AsyncMock):
         mock.return_value = self.get_tiles(is_open=True)
 
         result = await validate_new_position(self.cursor, self.point)
         self.assertIsNone(result)
 
-    @patch("handler.board.BoardHandler.fetch")
+    @patch("BoardHandler.fetch")
     async def test_same(self, mock: AsyncMock):
         self.point = self.cursor.position
 
@@ -60,7 +65,7 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
             )
         )
         
-    @patch("handler.board.BoardHandler.fetch")
+    @patch("BoardHandler.fetch")
     async def test_not_movable(self, mock: AsyncMock):
         self.point = Point(2, 0)
 
@@ -73,7 +78,7 @@ class ValidateNewPosition_TestCase(AsyncTestCase):
             )
         )
         
-    @patch("handler.board.BoardHandler.fetch")
+    @patch("BoardHandler.fetch")
     async def test_not_open_tile(self, mock: AsyncMock):
         mock.return_value = self.get_tiles(is_open=False)
 
@@ -95,7 +100,7 @@ class GetWatchers_TestCase(TestCase):
         self.example_cursors_1 = [self.cur_a, self.cur_b]    
         self.example_cursors_2 = [self.cur_a, self.cur_c]
 
-    @patch("handler.cursor.CursorHandler.view_includes_point")
+    @patch("CursorHandler.view_includes_point")
     def test_new_watchers(self, mock: MagicMock):
         mock.return_value = self.example_cursors_1
 
@@ -105,8 +110,8 @@ class GetWatchers_TestCase(TestCase):
         self.assertListEqual(result, [self.cur_b])
 
 
-    @patch("handler.cursor.CursorHandler.get_watchers_id")
-    @patch("handler.cursor.CursorHandler.get_cursor")
+    @patch("CursorHandler.get_watchers_id")
+    @patch("CursorHandler.get_cursor")
     def test_old_watchers(self, get_cursor:MagicMock, get_watchers_id:MagicMock):
         get_watchers_id.return_value = [c.id for c in self.example_cursors_1]
         get_cursor.side_effect = self.example_cursors_1
@@ -122,7 +127,7 @@ class GetWatchers_TestCase(TestCase):
 
 
 class MovingMulticast_TestCase(AsyncTestCase):
-    @patch("receiver.internal.moving.multicast")
+    @patch("multicast")
     async def multicast_moved(self, mock:AsyncMock):
         cursor_a = Cursor.create("A")
         cursor_b = Cursor.create("B")
@@ -141,6 +146,39 @@ class MovingMulticast_TestCase(AsyncTestCase):
             )
         )
 
+class GiveReward_TestCase(AsyncTestCase):
+    @patch("ScoreHandler.increase")
+    async def test_normal(self, mock: AsyncMock):
+        #TODO: 필요할 때 하기
+        pass
+
+
+class GetNewCursorsOnSight_TestCase(TestCase):
+    @patch("CursorHandler.exists_range")
+    def test_normal(self, mock: MagicMock):
+        # Given
+        cursor = Cursor.create("main")
+        cursor.height, cursor.width = 1, 1
+        cursor.position = Point(0, 0)
+        old_position = Point(1, 1)
+
+        old_range = PointRange(Point(0, 2), Point(2, 0))
+        cur_range = PointRange(Point(-1, 1), Point(1, -1))
+
+        expected_cursors = get_cur_set(2)
+        mock.return_value = expected_cursors
+
+        # When
+        result = get_new_cursors_on_sight(cursor, old_position)
+
+        # Then
+        self.assertEqual(expected_cursors, result)
+        mock.assert_called_once_with(
+            start=cur_range.top_left, end=cur_range.bottom_right,
+            exclude_start=old_range.top_left, exclude_end=old_range.bottom_right,
+            exclude_ids=[cursor.id]
+        )
+
 class PickUnwatchingCursors_TestCase(TestCase):
     def test_normal(self):
         cur_main = Cursor.create("main")
@@ -157,34 +195,34 @@ class PickUnwatchingCursors_TestCase(TestCase):
         result = pick_unwatching_cursors(cur_main, [cur_a, cur_b])
         self.assertListEqual(result, [cur_b])
 
-cur_a = Cursor.create("A")
+cur_main = Cursor.create("main")
+other_cursors = get_cur_set(3)
 position = Point(0, 0)
 message = Message(
     event=EventCollection.MOVING,
-    header={"sender" : cur_a.id},
+    header={"sender" : cur_main.id},
     payload=MovingPayload(
         position=position
     )
 )
 
 def mock_moving_receiver_dependency(func):
-    prefix = "receiver.internal.moving."
-    
-    func = patch("handler.cursor.CursorHandler.get_cursor", return_value=cur_a)(func)
-    func = patch(prefix+"validate_new_position", return_value=None)(func)
-    func = patch(prefix+"multicast")(func)
-    
-    func = patch(prefix+"get_old_watchers", return_value=[])(func)
-    func = patch(prefix+"multicast_moved")(func)
-    func = patch(prefix+"pick_unwatching_cursors", return_value=[])(func)
+    func = patch("CursorHandler.get_cursor", return_value=cur_main)(func)
+    func = patch("validate_new_position", return_value=None)(func)
+    func = patch("multicast")(func)
 
-    func = patch(prefix+"unwatch")(func)
-    func = patch(prefix+"get_new_watchers", return_value=[])(func)
-    func = patch(prefix+"watch")(func)
+    func = patch("multicast_moved")(func)
+    func = patch("give_reward")(func)
 
-    func = patch(prefix+"publish_new_cursors")(func)
-    func = patch("handler.cursor.CursorHandler.exists_range", return_value=[])(func)
-    func = patch(prefix+"find_cursors_to_unwatch", return_value=[])(func)
+    func = patch("get_old_watchers", return_value=other_cursors)(func)
+    func = patch("get_new_watchers", return_value=other_cursors)(func)
+    func = patch("get_new_cursors_on_sight", return_value=other_cursors)(func)
+    func = patch("pick_unwatching_cursors", return_value=other_cursors)(func)
+    func = patch("find_cursors_to_unwatch", return_value=other_cursors)(func)
+
+    func = patch("unwatch")(func)
+    func = patch("watch")(func)
+    func = patch("publish_new_cursors")(func)
 
     async def wrapper(*args, **kwargs):
         return await func(*args, **kwargs)
@@ -197,23 +235,39 @@ class MovingReceiver_TestCase(AsyncTestCase):
         get_cursor: MagicMock,
         validate_new_position: AsyncMock,
         multicast: AsyncMock,
-        get_old_watchers: MagicMock,
         multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
+        give_reward: AsyncMock,
+        get_old_watchers: MagicMock,
         get_new_watchers: MagicMock,
+        get_new_cursors_on_sight: MagicMock,
+        pick_unwatching_cursors: MagicMock,
+        find_cursors_to_unwatch: MagicMock,
+        unwatch: MagicMock,
         watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
+        publish_new_cursors: AsyncMock
     ):
         await MovingReceiver.receive_moving(message)
         
         multicast.assert_not_called()
-        multicast_moved.assert_not_called()
-        watch.assert_not_called()
-        publish_new_cursors.assert_not_called()
-        unwatch.assert_not_called()
+
+        multicast_moved.assert_called_once_with(target_conns=other_cursors, cursor=cur_main)
+        give_reward.assert_called_once_with(cur_main)
+
+        watch.assert_has_calls([
+            call(watchers=[cur_main], watchings=other_cursors),
+            call(watchers=other_cursors, watchings=[cur_main])
+        ], any_order=True)
+
+        unwatch.assert_has_calls([
+            call(watchers=other_cursors, watchings=[cur_main]),
+            call(watchers=[cur_main], watchings=other_cursors)
+        ], any_order=True) 
+
+        publish_new_cursors.assert_has_calls([
+            call(target_cursors=[cur_main], cursors=other_cursors),
+            call(target_cursors=other_cursors, cursors=[cur_main])
+        ], any_order=True)
+        
 
     @mock_moving_receiver_dependency
     async def test_invalid_input(
@@ -221,137 +275,27 @@ class MovingReceiver_TestCase(AsyncTestCase):
         get_cursor: MagicMock,
         validate_new_position: AsyncMock,
         multicast: AsyncMock,
-        get_old_watchers: MagicMock,
         multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
+        give_reward: AsyncMock,
+        get_old_watchers: MagicMock,
         get_new_watchers: MagicMock,
+        get_new_cursors_on_sight: MagicMock,
+        pick_unwatching_cursors: MagicMock,
+        find_cursors_to_unwatch: MagicMock,
+        unwatch: MagicMock,
         watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
+        publish_new_cursors: AsyncMock
     ):
         err_message = Message(event="", payload=None)
         validate_new_position.return_value = err_message 
 
         await MovingReceiver.receive_moving(message)
         
-        multicast.assert_called_once_with(target_conns=[cur_a.id], message=err_message)
+        multicast.assert_called_once_with(target_conns=[cur_main.id], message=err_message)
 
-    @mock_moving_receiver_dependency
-    async def test_get_old_watchers(
-        self,
-        get_cursor: MagicMock,
-        validate_new_position: AsyncMock,
-        multicast: AsyncMock,
-        get_old_watchers: MagicMock,
-        multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
-        get_new_watchers: MagicMock,
-        watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
-    ):
-        example_cursors = [Cursor.create("B"),Cursor.create("C")]
-        get_old_watchers.return_value = example_cursors
-
-        await MovingReceiver.receive_moving(message)
-        
-        multicast_moved.assert_called_once_with(target_conns=example_cursors, cursor=cur_a)
-
-    @mock_moving_receiver_dependency
-    async def test_pick_unwatching_cursors(
-        self,
-        get_cursor: MagicMock,
-        validate_new_position: AsyncMock,
-        multicast: AsyncMock,
-        get_old_watchers: MagicMock,
-        multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
-        get_new_watchers: MagicMock,
-        watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
-    ):
-        example_cursors = [Cursor.create("B"),Cursor.create("C")]
-        pick_unwatching_cursors.return_value = example_cursors
-
-        await MovingReceiver.receive_moving(message)
-        
-        unwatch.assert_called_once_with(watchers=example_cursors, watchings=[cur_a])
-
-    @mock_moving_receiver_dependency
-    async def test_get_new_watchers(
-        self,
-        get_cursor: MagicMock,
-        validate_new_position: AsyncMock,
-        multicast: AsyncMock,
-        get_old_watchers: MagicMock,
-        multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
-        get_new_watchers: MagicMock,
-        watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
-    ):
-        example_cursors = [Cursor.create("B"),Cursor.create("C")]
-        get_new_watchers.return_value = example_cursors
-
-        await MovingReceiver.receive_moving(message)
-        
-        watch.assert_called_once_with(watchers=example_cursors, watchings=[cur_a])
-        publish_new_cursors.assert_called_once_with(target_cursors=example_cursors, cursors=[cur_a])
-
-    @mock_moving_receiver_dependency
-    async def test_new_watchings(
-        self,
-        get_cursor: MagicMock,
-        validate_new_position: AsyncMock,
-        multicast: AsyncMock,
-        get_old_watchers: MagicMock,
-        multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
-        get_new_watchers: MagicMock,
-        watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
-    ):
-        example_cursors = [Cursor.create("B"),Cursor.create("C")]
-        exists_range.return_value = example_cursors
-
-        await MovingReceiver.receive_moving(message)
-        
-        watch.assert_called_once_with(watchers=[cur_a], watchings=example_cursors)
-        publish_new_cursors.assert_called_once_with(target_cursors=[cur_a], cursors=example_cursors)
-
-    @mock_moving_receiver_dependency
-    async def test_find_cursors_to_unwatch(
-        self,
-        get_cursor: MagicMock,
-        validate_new_position: AsyncMock,
-        multicast: AsyncMock,
-        get_old_watchers: MagicMock,
-        multicast_moved: AsyncMock,
-        pick_unwatching_cursors: MagicMock,
-        unwatch: MagicMock,
-        get_new_watchers: MagicMock,
-        watch: MagicMock,
-        publish_new_cursors: AsyncMock,
-        exists_range: MagicMock,
-        find_cursors_to_unwatch: MagicMock
-    ):
-        example_cursors = [Cursor.create("B"),Cursor.create("C")]
-        find_cursors_to_unwatch.return_value = example_cursors
-
-        await MovingReceiver.receive_moving(message)
-        
-        unwatch.assert_called_once_with(watchers=[cur_a], watchings=example_cursors)
-        
+        multicast_moved.assert_not_called()
+        give_reward.assert_not_called()
+        publish_new_cursors.assert_not_called()
+        unwatch.assert_not_called()
+        watch.assert_not_called()
+        publish_new_cursors.assert_not_called()

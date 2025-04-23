@@ -1,6 +1,6 @@
 import asyncio
 import random
-from data.board import Point, Section, Tile, Tiles
+from data.board import Point, Section, Tile, Tiles, PointRange
 from handler.board.storage import SectionStorage
 from data.cursor import Color
 from typing import Coroutine
@@ -63,13 +63,7 @@ class BoardHandler:
         return Tiles(data=out)
 
     @staticmethod
-    async def _open_tile(p: Point) -> Tile:
-        """
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        DEPRECATED
-        => open_tiles에 병합
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        """
+    async def open_tile(p: Point) -> Tile:
         section, inner_p = await BoardHandler._get_section_from_abs_point(p)
 
         tiles = section.fetch(inner_p)
@@ -85,31 +79,31 @@ class BoardHandler:
         return tile
 
     @staticmethod
-    async def open_tiles(p: Point) -> tuple[Point, Point, Tiles]:
+    async def dry_run_open_tiles(p: Point) -> tuple[Point]:
         """
-        지정된 타일부터 주변 타일들을 연쇄적으로 개방한다.
+        지정된 타일을 열었을 때 개방될 타일들을 반환한다. 
         빈칸들과 빈칸과 인접한숫자 타일까지 개방하며, 섹션 가장자리 데이터가 새로운 섹션으로 인해 중간에 수정되는 것을 방지하기 위해
         섹션을 사용할 때 인접 섹션이 존재하지 않으면 미리 만들어 놓는다.
         """
 
-        # open_tile과 병합되며 생긴 레거시. 나중에 정리해야 함.
-        section, inner_p = await BoardHandler._get_section_from_abs_point(p)
+        # # open_tile과 병합되며 생긴 레거시. 나중에 정리해야 함.
+        # section, inner_p = await BoardHandler._get_section_from_abs_point(p)
 
-        tiles = section.fetch(inner_p)
+        # tiles = section.fetch(inner_p)
 
-        tile = Tile.from_int(tiles.data[0])
+        # tile = Tile.from_int(tiles.data[0])
         
-        is_multi_openable = (not tile.is_mine) and (tile.number is None)
-        if is_multi_openable:
-            tile.is_open = True
+        # is_multi_openable = (not tile.is_mine) and (tile.number is None)
+        # if is_multi_openable:
+        #     tile.is_open = True
 
-            tiles.data[0] = tile.data
+        #     tiles.data[0] = tile.data
 
-            section.update(data=tiles, start=inner_p)
-            await BoardHandler._set_section(section)
+        #     section.update(data=tiles, start=inner_p)
+        #     await BoardHandler._set_section(section)
 
-            return p, p, tiles
-        # 레거시 끝
+        #     return p, p, tiles
+        # # 레거시 끝
 
         # 탐색하며 발견한 섹션들
         sections: list[Section] = []
@@ -145,28 +139,22 @@ class BoardHandler:
         visited = set()
         visited.add((p.x, p.y))
 
-        # 추후 fetch 범위
-        min_x, min_y = p.x, p.y
-        max_x, max_y = p.x, p.y
-
-        while len(queue) > 0:
-            p = queue.pop(0)
-
-            # 범위 업데이트
-            min_x, min_y = min(min_x, p.x), min(min_y, p.y)
-            max_x, max_y = max(max_x, p.x), max(max_y, p.y)
+        idx = 0
+        while idx < len(queue):
+            p = queue[idx]
+            idx += 1
 
             sec, inner_p = await get_section(p)
 
             # TODO: section.fetch_one(point) 같은거 만들어야 할 듯
             tile = Tile.from_int(sec.fetch(inner_p).data[0])
 
-            # 타일 열어주기
-            tile.is_open = True
-            tile.is_flag = False
-            tile.color = None
-
-            sec.update(Tiles(data=bytearray([tile.data])), inner_p)
+            # # 타일 열어주기
+            # tile.is_open = True
+            # tile.is_flag = False
+            # tile.color = None
+            
+            # sec.update(Tiles(data=bytearray([tile.data])), inner_p)
 
             if tile.number is not None:
                 # 빈 타일 주변 number까지만 열어야 함.
@@ -199,14 +187,10 @@ class BoardHandler:
 
             queue.extend(temp_list)
 
-        # 섹션 변경사항 모두 저장
-        await asyncio.gather(*[BoardHandler._set_section(section) for section in sections])
+        # # 섹션 변경사항 모두 저장
+        # await asyncio.gather(*[BoardHandler._set_section(section) for section in sections])
 
-        start_p = Point(min_x, max_y)
-        end_p = Point(max_x, min_y)
-        tiles = await BoardHandler.fetch(start_p, end_p)
-
-        return start_p, end_p, tiles
+        return queue
 
     @staticmethod
     async def set_flag_state(p: Point, state: bool, color: Color | None = None) -> Tile:

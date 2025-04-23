@@ -1,7 +1,6 @@
 from .internal.payload import (
     EventCollection,
     ClickType,
-    IdPayload,
     DataPayload, 
     ErrorPayload,
     FetchTilesPayload,
@@ -18,12 +17,14 @@ from .internal.payload import (
     NewConnPayload,
     ConnClosedPayload,
     CursorQuitPayload,
-    CursorReviveAtPayload,
+    CursorPayload,
     CursorsPayload,
     MyCursorPayload,
     YouDiedPayload,
     SetViewSizePayload,
     SetFlagPayload,
     OpenTilePayload,
-    EventEnum
+    EventEnum,
+    ScoreBoardElement,
+    ScoreboardStatePayload
 )

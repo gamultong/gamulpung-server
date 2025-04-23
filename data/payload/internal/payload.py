@@ -1,4 +1,4 @@
-from event.payload import Payload, ParsablePayload
+from event.payload import Payload, ParsablePayload, Empty
 from typing import Generic, TypeVar
 from data.board import Point
 from data.cursor import Color
@@ -39,20 +39,48 @@ class EventCollection(EventEnum):
     FETCH_TILES = "fetch-tiles"
     TILES = "tiles"
 
+    # 일단 새로운 것들은 아래에 정리
+    SCOREBOARD_STATE = "scoreboard-state"
+
 
 class ClickType(str, Enum):
     GENERAL_CLICK = "GENERAL_CLICK"
     SPECIAL_CLICK = "SPECIAL_CLICK"
 
+@dataclass
+class ScoreBoardElement(Payload):
+    rank: int
+    score: int
+    before_rank: int|Empty = Empty
 
 @dataclass
-class IdPayload(Payload):
-    id: str
+class ScoreboardStatePayload(Payload):
+    data: list[ScoreBoardElement]
 
+"""
+{
+    "data": [
+        {
+            "rank": 4
+            "score" : 12313
+            "before_rank": 2
+        },
+    ]
+}
+"""
+@dataclass
+class HeaderFrame(Payload):
+    event: str
+
+@dataclass
+class PayloadFrame(Payload):
+    header: ParsablePayload[HeaderFrame]
+    content: ParsablePayload[HeaderFrame]   
 
 @dataclass
 class DataPayload(Generic[DATA_TYPE], Payload):
-    data: ParsablePayload[DATA_TYPE]
+    id: str
+    data: DATA_TYPE|None = None
 
 
 @dataclass
@@ -143,19 +171,19 @@ class ConnClosedPayload(Payload):
 class CursorQuitPayload(Payload):
     id: str
 
-
 @dataclass
-class CursorReviveAtPayload(Payload):
+class CursorPayload(Payload):
     id: str
     position: ParsablePayload[Point]
     pointer: ParsablePayload[Point] | None
     color: Color
     revive_at: str | None
+    score: int
 
 
 @dataclass
 class CursorsPayload(Payload):
-    cursors: list[CursorReviveAtPayload]
+    cursors: list[CursorPayload]
 
 
 @dataclass

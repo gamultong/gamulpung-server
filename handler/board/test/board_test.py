@@ -59,7 +59,7 @@ class BoardHandlerTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_open_tile(self):
         p = Point(0, -2)
 
-        result = await BoardHandler._open_tile(p)
+        result = await BoardHandler.open_tile(p)
 
         tiles = await BoardHandler.fetch(start=p, end=p)
         tile = Tile.from_int(tiles.data[0])

@@ -3,21 +3,21 @@ from event.message import Message
 from data.payload import (
     EventCollection, 
     OpenTilePayload, TilesOpenedPayload,
-    YouDiedPayload, CursorReviveAtPayload, CursorsPayload
+    YouDiedPayload, CursorPayload, CursorsPayload
 )
 
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
+from handler.score import ScoreHandler
 
 from data.board import Point, Tile, Tiles, PointRange
 from data.cursor import Cursor
 
-from config import MINE_KILL_DURATION_SECONDS
+from config import MINE_KILL_DURATION_SECONDS, OPEN_TILE_SCORE
 
 from datetime import datetime, timedelta
 
-from .utils import multicast
-
+from .utils import multicast, fetch_tiles
 
 async def get_tile_if_openable(cursor: Cursor):
     if not cursor.check_interactable(cursor.pointer):
@@ -46,9 +46,12 @@ class OpenTileReceiver():
             return
 
         # 빈 칸. 주변 칸 모두 열기.
-        opened_range, tiles_opened = await open_tile(point=cursor.pointer)
+        opened_tile_points = await open_tile(point=cursor.pointer)
 
+        await give_reward(cursor, opened_tile_points)
+        
         # 변경된 타일을 보고있는 커서들에게 전달
+        opened_range, tiles = await fetch_opened_tiles(opened_tile_points)
         view_cursors = CursorHandler.view_includes_range(
             start=opened_range.top_left,
             end=opened_range.bottom_right
@@ -56,7 +59,7 @@ class OpenTileReceiver():
         await multicast_tiles_opened(
             target_conns=view_cursors,
             point_range=opened_range,
-            tiles_str=tiles_opened
+            tiles_str=tiles.to_str()
         )
 
         if tile.is_mine:
@@ -68,14 +71,32 @@ class OpenTileReceiver():
             # 보고있는 커서들에게 cursors-died
             watchers = get_watchers_all(dead_cursors)
             await multicast_cursors_died(target_conns=watchers, cursors=dead_cursors)
+            
+async def open_tile(point: Point) -> tuple[Point]:
+    points = await BoardHandler.dry_run_open_tiles(point)
+    for point in points:
+        await BoardHandler.open_tile(point)
 
+    return points
 
-async def open_tile(point: Point) -> tuple[PointRange, str]:
-    start_p, end_p, tiles = await BoardHandler.open_tiles(point)
-    tiles.hide_info()
-    tiles_str = tiles.to_str()
-    return PointRange(start_p, end_p), tiles_str
+async def fetch_opened_tiles(points: list[Point]) -> tuple[PointRange, Tiles]:
+    # fetch range 찾기
+    max_x = max(points, key=lambda p:p.x).x
+    max_y = max(points, key=lambda p:p.y).y
+    min_x = min(points, key=lambda p:p.x).x
+    min_y = min(points, key=lambda p:p.y).y
+    
+    top_left     = Point(min_x, max_y)
+    bottom_right = Point(max_x, min_y)
+    
+    tiles_opened_range = await fetch_tiles(top_left, bottom_right)
+    
+    return PointRange(top_left, bottom_right), tiles_opened_range
 
+async def give_reward(cursor: Cursor, points: list[Point]):
+    to_add = len(points) * OPEN_TILE_SCORE
+
+    await ScoreHandler.increase(cursor.id, to_add)
 
 def detonate_mine(point: Point):
     # 주변 8칸 커서들 찾기
@@ -89,10 +110,8 @@ def detonate_mine(point: Point):
 
     return nearby_cursors
 
-
 def get_revive_at():
     return datetime.now() + timedelta(seconds=MINE_KILL_DURATION_SECONDS)
-
 
 def get_nearby_alive_cursors(point: Point):
     start_p = Point(point.x - 1, point.y + 1)
@@ -146,12 +165,13 @@ async def multicast_cursors_died(target_conns: list[Cursor], cursors: list[Curso
         message=Message(
             event=EventCollection.CURSORS_DIED,
             payload=CursorsPayload(
-                cursors=[CursorReviveAtPayload(
+                cursors=[CursorPayload(
                     id=cursor.id,
                     position=cursor.position,
                     color=cursor.color,
                     revive_at=cursor.revive_at,
-                    pointer=cursor.pointer
+                    pointer=cursor.pointer,
+                    score=None
                 ) for cursor in cursors]
             )
         )

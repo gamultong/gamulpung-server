@@ -4,7 +4,7 @@ from data.payload import EventEnum, DataPayload
 from handler.storage.interface import KeyValueInterface, ListInterface
 from handler.storage.dict import DictStorage
 from handler.storage.list.array import ArrayListStorage
-from data.payload import DataPayload, IdPayload
+from data.payload import DataPayload
 from event.broker import EventBroker
 from event.message import Message
 
@@ -65,6 +65,15 @@ class ScoreHandler:
         return tuple(result)
 
     @classmethod
+    async def increase(cls, id: str, value: int):
+        score = await cls.score_storage.get(id)
+        if score is None:
+            raise ScoreNotFoundException()
+
+        score.value += value
+        return await cls.update(score)
+
+    @classmethod
     async def update(cls, score: Score):
         current = await cls.score_storage.get(score.id)
         if current is None:
@@ -74,10 +83,12 @@ class ScoreHandler:
 
         message = Message(
             event=ScoreEvent.UPDATED,
-            payload=DataPayload(data=current)
+            payload=DataPayload(id=current.id, data=current)
         )
         
         await EventBroker.publish(message=message)
+
+        return score
 
     @classmethod
     async def create(cls, id: str):
@@ -90,7 +101,7 @@ class ScoreHandler:
         
         message = Message(
             event=ScoreEvent.CREATED,
-            payload=IdPayload(id=id)
+            payload=DataPayload(id=id)
         )
         await EventBroker.publish(message=message)
 
@@ -109,7 +120,7 @@ class ScoreHandler:
         await EventBroker.publish(
             message=Message(
                 event=ScoreEvent.DELETED,
-                payload=DataPayload(data=score)
+                payload=DataPayload(id=score.id,data=score)
             )
         )
 

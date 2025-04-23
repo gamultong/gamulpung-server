@@ -6,11 +6,14 @@ from data.payload import (
 
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
+from handler.score import ScoreHandler
 
 from data.board import Point, Tile
 from data.cursor import Cursor
 
 from .utils import multicast
+
+from config import SET_FLAG_SCORE
 
 
 class SetFlagReceiver():
@@ -30,13 +33,17 @@ class SetFlagReceiver():
             state=tile.is_flag, color=tile.color
         )
 
+        await give_reward(cursor)
+
         # 변경된 타일을 보고있는 커서들에게 전달
         view_cursors = CursorHandler.view_includes_point(p=cursor.pointer)
-        if len(view_cursors) > 0:
-            await multicast_flag_set(
-                target_conns=view_cursors,
-                tile=tile, position=cursor.pointer
-            )
+        await multicast_flag_set(
+            target_conns=view_cursors,
+            tile=tile, position=cursor.pointer
+        )
+
+async def give_reward(cursor:Cursor):
+    await ScoreHandler.increase(cursor.id, SET_FLAG_SCORE)
 
 async def multicast_flag_set(target_conns: list[Cursor], tile: Tile, position: Point):
     await multicast(

@@ -1,7 +1,8 @@
 from event.message import Message
 from data.cursor import Cursor
 from data.board import Point, Tiles
-from data.payload import EventCollection, CursorsPayload, CursorReviveAtPayload
+from data.score import Score
+from data.payload import EventCollection, CursorsPayload, CursorPayload
 
 from receiver.internal.utils import (
     multicast, watch, unwatch,
@@ -12,10 +13,12 @@ from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import patch, AsyncMock, MagicMock, call
 
 from .test_tools import assertMulticast
+from tests.utils import PathPatch
 
+patch = PathPatch("receiver.internal.utils")
 
 class Multicast_TestCase(AsyncTestCase):
-    @patch("event.broker.EventBroker.publish")
+    @patch("EventBroker.publish")
     async def test_normal(self, publish_mock: AsyncMock):
         target_conns = ["a", "b", "c"]
         message = Message(
@@ -39,7 +42,7 @@ class Multicast_TestCase(AsyncTestCase):
             )
         )
 
-    @patch("event.broker.EventBroker.publish")
+    @patch("EventBroker.publish")
     async def test_no_target_conns(self, publish_mock: AsyncMock):
         target_conns = []
         message = Message(
@@ -53,7 +56,7 @@ class Multicast_TestCase(AsyncTestCase):
 
 
 class FetchTiles_TestCase(AsyncTestCase):
-    @patch("handler.board.BoardHandler.fetch", return_value=MagicMock(Tiles))
+    @patch("BoardHandler.fetch", return_value=MagicMock(Tiles))
     async def test_normal(self, fetch_mock: AsyncMock):
         start, end = Point(0, 0), Point(0, 0)
 
@@ -73,7 +76,7 @@ watchings = [cur_C, cur_D]
 
 
 class Watch_TestCase(TestCase):
-    @patch("handler.cursor.CursorHandler.add_watcher")
+    @patch("CursorHandler.add_watcher")
     def test_normal(self, add_watcher_mock: MagicMock):
         watch(watchers=watchers, watchings=watchings)
 
@@ -94,7 +97,7 @@ class Watch_TestCase(TestCase):
 
 
 class Unwatch_TestCase(TestCase):
-    @patch("handler.cursor.CursorHandler.remove_watcher")
+    @patch("CursorHandler.remove_watcher")
     def test_normal(self, remove_watcher_mock: MagicMock):
         unwatch(watchers=watchers, watchings=watchings)
 
@@ -115,10 +118,14 @@ class Unwatch_TestCase(TestCase):
 
 
 class PublishNewCursors_TestCase(AsyncTestCase):
-    @patch("receiver.internal.utils.multicast")
-    async def test_normal(self, multicast: AsyncMock):
+    @patch("multicast")
+    @patch("ScoreHandler.get_by_id")
+    async def test_normal(self, get_by_id: AsyncMock,multicast: AsyncMock):
         cursors = [Cursor.create("A"), Cursor.create("B")]
         target_cursors = [Cursor.create("C"), Cursor.create("D")]
+
+        expected_score = Score(cursor_id="don't care", value=10)
+        get_by_id.return_value = expected_score
 
         await publish_new_cursors(
             target_cursors=target_cursors,
@@ -133,21 +140,24 @@ class PublishNewCursors_TestCase(AsyncTestCase):
             message=Message(
                 event=EventCollection.CURSORS,
                 payload=CursorsPayload(
-                    cursors=[CursorReviveAtPayload(
+                    cursors=[CursorPayload(
                         id=cursor.id,
                         position=cursor.position,
                         pointer=cursor.pointer,
                         color=cursor.color,
-                        revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None
+                        revive_at=cursor.revive_at.astimezone().isoformat() if cursor.revive_at is not None else None,
+                        score=expected_score.value
                     ) for cursor in cursors]
                 )
             )
         )
 
+        get_by_id.assert_has_calls([call(cursor.id) for cursor in cursors])
+
 
 class GetWatchers_TestCase(TestCase):
-    @patch("handler.cursor.CursorHandler.get_watchers_id")
-    @patch("handler.cursor.CursorHandler.get_cursor")
+    @patch("CursorHandler.get_watchers_id")
+    @patch("CursorHandler.get_cursor")
     def test_get_watchers(self, get_cursor: MagicMock, get_watchers_id: MagicMock):
         cur_main = Cursor.create("main")
         watchers = [Cursor.create("A"), Cursor.create("B")]

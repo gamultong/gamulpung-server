@@ -5,7 +5,7 @@ from handler.storage.dict import DictSpace
 from handler.storage.list.array import ArrayListSpace
 from event.message import Message
 
-from data.payload import DataPayload, IdPayload
+from data.payload import DataPayload
 
 patch = PathPatch("handler.score.internal.score_handler")
 from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException, RankOutOfRangeException
@@ -68,19 +68,20 @@ class ScoreHandler_TestCase(AsyncTestCase):
         mock.assert_called_once_with(
             message=Message(
                 event=ScoreEvent.CREATED,
-                payload=IdPayload(id="C")
+                payload=DataPayload(id="C")
             )
         )
         self.assertEqual(self.score_storage.data["C"], Score("C", 0, 3))
 
     @patch("EventBroker.publish")
     async def test_update(self, mock: AsyncMock):
-        await ScoreHandler.update(Score("A", 300))
+        score = await ScoreHandler.update(Score("A", 300))
         
         mock.assert_called_once_with(
             message=Message(
                 event=ScoreEvent.UPDATED,
                 payload=DataPayload(
+                    id=self.score_a.id,
                     data=self.score_a,
                 )
             )
@@ -88,7 +89,24 @@ class ScoreHandler_TestCase(AsyncTestCase):
 
         self.assertNotEqual(self.score_storage.data["A"], self.score_a)
         self.assertEqual(self.score_storage.data["A"], Score("A", 300, 1))
+        self.assertEqual(self.score_storage.data["A"], score)
         self.assertEqual(self.score_storage.data["B"], Score("B", 200, 2))
+
+
+    @patch("ScoreHandler.update")
+    async def test_increase(self, mock: AsyncMock):
+        result = Score("A", 300, 1)
+        mock.return_value = result
+
+        score = await ScoreHandler.increase("A", 200)
+        
+        mock.assert_called_once_with(Score(cursor_id="A", value=300, rank=2))
+        self.assertEqual(score, result)
+
+
+    async def test_increase_notfound(self):
+        # TODO
+        pass
 
     @patch("EventBroker.publish")
     async def test_delete(self, mock: AsyncMock):
@@ -98,6 +116,7 @@ class ScoreHandler_TestCase(AsyncTestCase):
             message=Message(
                 event=ScoreEvent.DELETED,
                 payload=DataPayload(
+                    id=self.score_b.id,
                     data=self.score_b
                 )
             ) 
