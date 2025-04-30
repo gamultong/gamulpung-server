@@ -20,9 +20,7 @@ async def init_board():
 
         await SectionStorage.set(section_0_0)
 
-
 asyncio.run(init_board())
-
 
 class BoardHandler:
 

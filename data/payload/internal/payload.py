@@ -84,6 +84,21 @@ class DataPayload(Generic[DATA_TYPE], Payload):
 
 
 @dataclass
+class HeaderFrame(Payload):
+    event: str
+
+@dataclass
+class PayloadFrame(Payload):
+    header: ParsablePayload[HeaderFrame]
+    content: ParsablePayload[HeaderFrame]   
+
+@dataclass
+class DataPayload(Generic[DATA_TYPE], Payload):
+    id: str
+    data: DATA_TYPE|None = None
+
+
+@dataclass
 class ErrorPayload(Payload):
     msg: str
 

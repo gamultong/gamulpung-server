@@ -7,7 +7,7 @@ from data.payload import (
 from data.cursor import Cursor
 from data.board import Point, Tiles, Tile, PointRange
 
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from receiver.internal.moving import (
     MovingReceiver,

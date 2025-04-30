@@ -4,8 +4,6 @@ from data.cursor import Cursor
 from data.score import Score
 from data.payload import (
     EventCollection,
-    ScoreBoardElement,
-    ScoreboardStatePayload,
     DataPayload
 )
 

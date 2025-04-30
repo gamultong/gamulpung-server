@@ -5,7 +5,7 @@ from data.payload import (
     EventCollection, ErrorPayload,
     FetchTilesPayload, TilesPayload
 )
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from receiver.internal.fetch_tiles import (
     FetchTilesReceiver,
@@ -29,7 +29,7 @@ class ValidateFetchRange_TestCase(TestCase):
 
     def test_range_limit_exceeded(self):
         start = Point(x=0, y=0)
-        end = Point(x=VIEW_SIZE_LIMIT, y=-VIEW_SIZE_LIMIT)
+        end = Point(x=WINDOW_SIZE_LIMIT, y=-WINDOW_SIZE_LIMIT)
 
         result = validate_fetch_range(start=start, end=end)
 
@@ -37,7 +37,7 @@ class ValidateFetchRange_TestCase(TestCase):
             result,
             Message(
                 event=EventCollection.ERROR,
-                payload=ErrorPayload(msg=f"fetch gap should not be more than {VIEW_SIZE_LIMIT}")
+                payload=ErrorPayload(msg=f"fetch gap should not be more than {WINDOW_SIZE_LIMIT}")
             )
         )
 

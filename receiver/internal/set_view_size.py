@@ -9,7 +9,7 @@ from handler.cursor import CursorHandler
 from data.cursor import Cursor
 from data.board import PointRange
 
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from .utils import (
     multicast, watch, unwatch, get_view_range_points,
@@ -56,13 +56,13 @@ def validate_view_size(cursor: Cursor, new_width: int, new_height: int):
 
     is_over_view_limit = new_width <= 0 or \
                          new_height <= 0 or \
-                         new_width > VIEW_SIZE_LIMIT or \
-                         new_height > VIEW_SIZE_LIMIT
+                         new_width > WINDOW_SIZE_LIMIT or \
+                         new_height > WINDOW_SIZE_LIMIT
     if is_over_view_limit:
         # 뷰 범위 한계 넘음
         return Message(
             event=EventCollection.ERROR,
-            payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
+            payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {WINDOW_SIZE_LIMIT}")
         )
 
 

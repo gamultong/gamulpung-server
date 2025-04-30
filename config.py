@@ -8,7 +8,9 @@ if os.environ.get("ENV") != "prod":
 
 MINE_KILL_DURATION_SECONDS = int(os.environ.get("MINE_KILL_DURATION_SECONDS"))
 DATABASE_PATH = os.environ.get("DATABASE_PATH")
-VIEW_SIZE_LIMIT = int(os.environ.get("VIEW_SIZE_LIMIT"))
+
+WINDOW_SIZE_LIMIT = int(os.environ.get("WINDOW_SIZE_LIMIT"))
+
 MESSAGE_RATE_LIMIT = os.environ.get("MESSAGE_RATE_LIMIT")
 CHAT_MAX_LENGTH = int(os.environ.get("CHAT_MAX_LENGTH"))
 OPEN_TILE_SCORE = int(os.environ.get("OPEN_TILE_SCORE"))

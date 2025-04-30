@@ -9,7 +9,7 @@ from handler.cursor import CursorHandler
 from data.cursor import Cursor
 from data.board import Point
 
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from receiver.internal.set_view_size import (
     SetViewSizeReceiver,
@@ -43,12 +43,12 @@ class ValidateViewSize_TestCase(TestCase):
 
     def test_over_view_limit_case(self):
         cursor = Cursor.create("A")
-        new_width, new_height = VIEW_SIZE_LIMIT+1, VIEW_SIZE_LIMIT+1
+        new_width, new_height = WINDOW_SIZE_LIMIT+1, WINDOW_SIZE_LIMIT+1
 
         result = validate_view_size(cursor, new_width, new_height)
         expected_message = Message(
             event=EventCollection.ERROR,
-            payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
+            payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {WINDOW_SIZE_LIMIT}")
         )
 
         self.assertEqual(result, expected_message)
