@@ -1,5 +1,5 @@
 import inspect
-
+from unittest.mock import patch
 
 def cases(case_list):
     def wrapper(func):
@@ -17,3 +17,13 @@ def cases(case_list):
                 func(*arg, **kwargs)
         return func_wrapper
     return wrapper
+
+class PathPatch:
+    def __init__(self, path: str):
+        self.path = path
+
+    def __call__(self, name: str, *args, **kwargs):
+        def wrapper(func):
+            func = patch(self.path+"."+name, *args, **kwargs)(func)
+            return func
+        return wrapper

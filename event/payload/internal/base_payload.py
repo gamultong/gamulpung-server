@@ -3,6 +3,8 @@ from .parsable_payload import ParsablePayload
 
 from enum import Enum
 
+class Empty:
+    pass
 
 class Payload():
     @classmethod

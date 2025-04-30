@@ -1,12 +1,14 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, NewConnPayload,
+    EventCollection, NewConnPayload,
     MyCursorPayload, TilesPayload
 )
 
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
+from handler.score import ScoreHandler
+
 
 from data.board import Point, Tiles
 from data.cursor import Cursor
@@ -22,32 +24,34 @@ from .utils import (
 
 
 class NewConnReceiver():
-    @EventBroker.add_receiver(EventEnum.NEW_CONN)
+    @EventBroker.add_receiver(EventCollection.NEW_CONN)
     @staticmethod
     async def receive_new_conn(message: Message[NewConnPayload]):
-        cursor = await new_cursor(message.payload)
+        cursor = await new_cursor(
+            message.payload.conn_id, 
+            message.payload.width, 
+            message.payload.height
+        )
 
         start, end = get_view_range_points(cursor.position, cursor.width, cursor.height)
 
         await multicast_my_cursor(target_conns=[cursor],cursor=cursor)
 
         cursors_in_view = fetch_cursors_in_view(cursor)
-        if len(cursors_in_view) > 0:
-            watch(watchers=[cursor], watchings=cursors_in_view)
 
-            await publish_new_cursors(
-                target_cursors=[cursor],
-                cursors=cursors_in_view
-            )
+        watch(watchers=[cursor], watchings=cursors_in_view)
+        await publish_new_cursors(
+            target_cursors=[cursor],
+            cursors=cursors_in_view
+        )
 
         cursors_with_view_including = fetch_with_view_including(cursor)
-        if len(cursors_with_view_including) > 0:
-            watch(watchers=cursors_with_view_including, watchings=[cursor])
 
-            await publish_new_cursors(
-                target_cursors=cursors_with_view_including,
-                cursors=[cursor]
-            )
+        watch(watchers=cursors_with_view_including, watchings=[cursor])
+        await publish_new_cursors(
+            target_cursors=cursors_with_view_including,
+            cursors=[cursor],
+        )
 
         tiles = await fetch_tiles(start, end)
         
@@ -58,15 +62,17 @@ class NewConnReceiver():
 
 
 
-async def new_cursor(payload: NewConnPayload):
+async def new_cursor(conn_id: str, width: int, height: int):
     position = await BoardHandler.get_random_open_position()
 
     cursor = CursorHandler.create_cursor(
-        conn_id=payload.conn_id,
+        conn_id=conn_id,
         position=position,
-        width=payload.width, 
-        height=payload.height
+        width=width, 
+        height=height
     )
+
+    await ScoreHandler.create(cursor.id)
 
     return cursor
 
@@ -89,7 +95,7 @@ async def multicast_my_cursor(target_conns: list[Cursor], cursor: Cursor):
     await multicast(
         target_conns=[cursor.id for cursor in target_conns],
         message=Message(
-            event=EventEnum.MY_CURSOR,
+            event=EventCollection.MY_CURSOR,
             payload=MyCursorPayload(
                 id=cursor.id,
                 position=cursor.position,
@@ -103,7 +109,7 @@ async def multicast_tiles(target_conns: list[Cursor], start: Point, end: Point, 
     await multicast(
     target_conns=[cursor.id for cursor in target_conns],
     message=Message(
-        event=EventEnum.TILES,
+        event=EventCollection.TILES,
         payload=TilesPayload(
             start_p=start,
             end_p=end,

@@ -1,20 +1,23 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, SetFlagPayload,FlagSetPayload
+    EventCollection, SetFlagPayload,FlagSetPayload
 )
 
 from handler.board import BoardHandler
 from handler.cursor import CursorHandler
+from handler.score import ScoreHandler
 
 from data.board import Point, Tile
 from data.cursor import Cursor
 
 from .utils import multicast
 
+from config import SET_FLAG_SCORE
+
 
 class SetFlagReceiver():
-    @EventBroker.add_receiver(EventEnum.SET_FLAG)
+    @EventBroker.add_receiver(EventCollection.SET_FLAG)
     @staticmethod
     async def receive_set_flag(message: Message[SetFlagPayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -30,19 +33,23 @@ class SetFlagReceiver():
             state=tile.is_flag, color=tile.color
         )
 
+        await give_reward(cursor)
+
         # 변경된 타일을 보고있는 커서들에게 전달
         view_cursors = CursorHandler.view_includes_point(p=cursor.pointer)
-        if len(view_cursors) > 0:
-            await multicast_flag_set(
-                target_conns=view_cursors,
-                tile=tile, position=cursor.pointer
-            )
+        await multicast_flag_set(
+            target_conns=view_cursors,
+            tile=tile, position=cursor.pointer
+        )
+
+async def give_reward(cursor:Cursor):
+    await ScoreHandler.increase(cursor.id, SET_FLAG_SCORE)
 
 async def multicast_flag_set(target_conns: list[Cursor], tile: Tile, position: Point):
     await multicast(
             target_conns=[c.id for c in target_conns],
             message=Message(
-                event=EventEnum.FLAG_SET,
+                event=EventCollection.FLAG_SET,
                 payload=FlagSetPayload(
                     position=position,
                     is_set=tile.is_flag,

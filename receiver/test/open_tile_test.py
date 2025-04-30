@@ -1,9 +1,9 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, 
+    EventCollection, 
     OpenTilePayload, TilesOpenedPayload,
-    YouDiedPayload, CursorReviveAtPayload, CursorsPayload
+    YouDiedPayload, CursorPayload, CursorsPayload
 )
 
 from handler.board import BoardHandler
@@ -12,23 +12,25 @@ from handler.cursor import CursorHandler
 from data.board import Point, Tile, Tiles, PointRange
 from data.cursor import Cursor
 
-from config import MINE_KILL_DURATION_SECONDS
+from config import MINE_KILL_DURATION_SECONDS, OPEN_TILE_SCORE
 
 from datetime import datetime, timedelta
 
 
 from receiver.internal.open_tile import (
     OpenTileReceiver,
-    get_tile_if_openable, detonate_mine, get_revive_at,
-    get_nearby_alive_cursors, get_watchers, open_tile,
+    get_tile_if_openable, detonate_mine, get_revive_at, give_reward,
+    get_nearby_alive_cursors, get_watchers_all, open_tile, fetch_opened_tiles,
     multicast_tiles_opened, multicast_you_died, multicast_cursors_died
 )
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
-from .test_tools import get_cur_set, PathPatch
+from .test_tools import get_cur_set
+from tests.utils import PathPatch
 
 patch = PathPatch("receiver.internal.open_tile")
+
 
 class GetTileIfOpenable_TestCase(AsyncTestCase):
     def setUp(self):
@@ -37,20 +39,20 @@ class GetTileIfOpenable_TestCase(AsyncTestCase):
         self.check_interactable_mock = MagicMock()
         self.cursor.check_interactable = self.check_interactable_mock
         self.cursor.check_interactable.return_value = True
-        
+
         self.open_tile = Tile.create(
-                is_open=True, 
-                is_mine=False, 
-                is_flag=False, 
-                color=None, 
-                number=1
+            is_open=True,
+            is_mine=False,
+            is_flag=False,
+            color=None,
+            number=1
         )
         self.closed_tile = Tile.create(
-                is_open=False, 
-                is_mine=False, 
-                is_flag=False, 
-                color=None, 
-                number=1
+            is_open=False,
+            is_mine=False,
+            is_flag=False,
+            color=None,
+            number=1
         )
 
         self.closed_flag_tile = self.closed_tile.copy()
@@ -99,6 +101,7 @@ class GetReviveAt_TestCase(TestCase):
         result = get_revive_at()
         self.assertEqual(result, time + MINE_KILL_DURATION_SECONDS)
 
+
 class DetonateMine_TestCase(TestCase):
     def setUp(self):
         self.cur_a, self.cur_b = get_cur_set(2)
@@ -107,9 +110,9 @@ class DetonateMine_TestCase(TestCase):
 
     @patch("get_nearby_alive_cursors")
     @patch("get_revive_at")
-    def test_normal(self, get_revive_at:MagicMock, get_nearby_alive_cursors:MagicMock):
+    def test_normal(self, get_revive_at: MagicMock, get_nearby_alive_cursors: MagicMock):
         now = datetime.now() + timedelta(days=1)
-        point = Point(1,1)
+        point = Point(1, 1)
 
         get_nearby_alive_cursors.return_value = [self.cur_a, self.cur_b]
         get_revive_at.return_value = now
@@ -117,11 +120,12 @@ class DetonateMine_TestCase(TestCase):
         result = detonate_mine(point)
 
         self.assertEqual(result, [self.cur_a, self.cur_b])
-        
+
         self.assertEqual(self.cur_a.revive_at, now)
         self.assertEqual(self.cur_b.revive_at, now)
         self.assertIsNone(self.cur_a.pointer)
         self.assertIsNone(self.cur_b.pointer)
+
 
 class GetNearbyAliveCursors_TestCase(TestCase):
     def setUp(self):
@@ -138,57 +142,58 @@ class GetNearbyAliveCursors_TestCase(TestCase):
         result = get_nearby_alive_cursors(point)
 
         self.assertEqual(result, [self.cur_alive])
-        
+
         exists_range.assert_called_once_with(start=start_p, end=end_p)
 
 
-class GetWatchers_TestCase(TestCase):
+class GetWatchersAll_TestCase(TestCase):
     def setUp(self):
         self.cur_a, self.cur_b, self.cur_c, self.cur_d = get_cur_set(4)
 
         self.all_cursors = [self.cur_a, self.cur_b, self.cur_c, self.cur_d]
         self.cur_a_watcher_ids = [self.cur_c.id]
         self.cur_b_watcher_ids = [self.cur_d.id]
-    
+
     @patch("CursorHandler.get_watchers_id")
     @patch("CursorHandler.get_cursor")
-    def test_normal(self, get_cursor:MagicMock, get_watchers_id:MagicMock):
+    def test_normal(self, get_cursor: MagicMock, get_watchers_id: MagicMock):
         def find_cursor_with_id(id: str):
             for cursor in self.all_cursors:
                 if cursor.id == id:
                     return cursor
-            
+
         get_cursor.side_effect = find_cursor_with_id
         get_watchers_id.side_effect = [self.cur_a_watcher_ids, self.cur_b_watcher_ids]
 
-        result = get_watchers([self.cur_a, self.cur_b])
+        result = get_watchers_all([self.cur_a, self.cur_b])
         self.assertCountEqual(result, self.all_cursors)
 
         self.assertEqual(len(get_cursor.mock_calls), len(self.all_cursors))
         get_watchers_id.assert_has_calls(
             calls=[
-                call(cursor_id=self.cur_a.id), 
+                call(cursor_id=self.cur_a.id),
                 call(cursor_id=self.cur_b.id)
             ]
         )
 
+
 class MulticastOpenTile_TestCase(AsyncTestCase):
     @patch("multicast")
-    async def test_multicast_tiles_opened(self, mock:AsyncMock):
+    async def test_multicast_tiles_opened(self, mock: AsyncMock):
         cur_a, cur_b = get_cur_set(2)
         point_range = PointRange(Point(-1, 1), Point(1, -1))
         tiles_str = "fake"
 
         await multicast_tiles_opened(
-            target_conns=[cur_a, cur_b], 
+            target_conns=[cur_a, cur_b],
             point_range=point_range,
             tiles_str=tiles_str
         )
-        
+
         mock.assert_called_once_with(
             target_conns=[cur.id for cur in [cur_a, cur_b]],
             message=Message(
-                event=EventEnum.TILES_OPENED,
+                event=EventCollection.TILES_OPENED,
                 payload=TilesOpenedPayload(
                     start_p=point_range.top_left,
                     end_p=point_range.bottom_right,
@@ -198,74 +203,101 @@ class MulticastOpenTile_TestCase(AsyncTestCase):
         )
 
     @patch("multicast")
-    async def test_multicast_you_died(self, mock:AsyncMock):
+    async def test_multicast_you_died(self, mock: AsyncMock):
         cur_a, cur_b = get_cur_set(2)
         time = datetime.now() + timedelta(days=1)
         cur_a.revive_at, cur_b.revive_at = time, time
 
         await multicast_you_died(target_conns=[cur_a, cur_b])
-        
+
         mock.assert_has_calls(calls=[
             call(
                 target_conns=[cur_a.id],
                 message=Message(
-                    event=EventEnum.YOU_DIED,
+                    event=EventCollection.YOU_DIED,
                     payload=YouDiedPayload(revive_at=cur_a.revive_at.astimezone().isoformat())
                 )
             ),
             call(
                 target_conns=[cur_b.id],
                 message=Message(
-                    event=EventEnum.YOU_DIED,
+                    event=EventCollection.YOU_DIED,
                     payload=YouDiedPayload(revive_at=cur_b.revive_at.astimezone().isoformat())
                 )
             )
         ])
 
     @patch("multicast")
-    async def test_multicast_cursors_died(self, mock:AsyncMock):
+    async def test_multicast_cursors_died(self, mock: AsyncMock):
         cur_a, cur_b = get_cur_set(2)
         target_conns = [cur_a, cur_b]
         cursors = [cur_a, cur_b]
 
         await multicast_cursors_died(target_conns=target_conns, cursors=cursors)
-        
+
         mock.assert_called_once_with(
             target_conns=[cur.id for cur in [cur_a, cur_b]],
             message=Message(
-                event=EventEnum.CURSORS_DIED,
+                event=EventCollection.CURSORS_DIED,
                 payload=CursorsPayload(
-                    cursors=[CursorReviveAtPayload(
+                    cursors=[CursorPayload(
                         id=cursor.id,
                         position=cursor.position,
                         color=cursor.color,
                         revive_at=cursor.revive_at,
-                        pointer=cursor.pointer
+                        pointer=cursor.pointer,
+                        score=None
                     ) for cursor in cursors]
                 )
             )
         )
 
+
+class GiveReward_TestCase(AsyncTestCase):
+    @patch("ScoreHandler.increase")
+    async def test_normal(self, increase: AsyncMock):
+        N = 5
+        cursor = Cursor.create("A")
+        points = [Point(1,1)] * N
+
+        await give_reward(cursor, points)
+
+        increase.assert_called_once_with(cursor.id, N*OPEN_TILE_SCORE)
+
 class OpenTile_TestCase(AsyncTestCase):
-    @patch("BoardHandler.open_tiles")
-    async def test_normal(self, open_tiles: AsyncMock):
-        tiles_str = "tiles string"
-        start_p, end_p = Point(-1, 0), Point(0, -1)
-        point = Point(0, 0)
+    @patch("BoardHandler.dry_run_open_tiles")
+    @patch("BoardHandler.open_tile")
+    async def test_normal(self, handler_open_tile: AsyncMock, dry_run_open_tiles: AsyncMock):
+        points = [Point(1,1), Point(2,2)]
 
-        mock_tiles = MagicMock(Tiles)
-        mock_tiles.to_str.return_value = tiles_str
+        dry_run_open_tiles.return_value = points
 
-        open_tiles.return_value = (start_p, end_p, mock_tiles)
-        
-        point_range, result_str = await open_tile(point)
+        await open_tile(Point(-1, -1)) # 아무거나 넣어도 됨
 
-        self.assertEqual(point_range, PointRange(start_p, end_p))
-        self.assertEqual(result_str, tiles_str)
-    
-        open_tiles.assert_called_once_with(point)
-        mock_tiles.hide_info.assert_called_once()
-        mock_tiles.to_str.assert_called_once()
+        handler_open_tile.assert_has_calls(
+            [call(point) for point in points], any_order=True
+        )
+
+class FetchOpenedTiles_TestCase(AsyncTestCase):
+    @patch("fetch_tiles")
+    async def test_normal(self, fetch_tiles: AsyncMock):
+        points = [Point(1,1), Point(2,2), Point(3,3)]
+
+        expected_top_left = Point(1, 3)
+        expected_bottom_right = Point(3, 1)
+
+        expect_tiles = Tiles(data=bytearray())
+
+        fetch_tiles.return_value = expect_tiles
+
+        point_range, tiles = await fetch_opened_tiles(points)
+
+        self.assertEqual(
+            point_range, 
+            PointRange(expected_top_left, expected_bottom_right)
+        )
+        self.assertEqual(tiles, expect_tiles)
+
 
 cursor_a = Cursor.create("A")
 cursor_a.pointer = Point(1, 1)
@@ -285,11 +317,12 @@ mine_tile = normal_tile.copy()
 mine_tile.is_mine = True
 mine_tile.number = None
 
-tiles_str = "tiles string"
+opened_tile_points = [Point(1,1), Point(2,2)]
+tiles = Tiles(data=bytearray())
 open_range = PointRange(Point(0, 0), Point(0, 0))
 
 example_message = Message(
-    event=EventEnum.OPEN_TILE,
+    event=EventCollection.OPEN_TILE,
     header={"sender": cursor_a.id},
     payload=OpenTilePayload()
 )
@@ -297,17 +330,20 @@ example_message = Message(
 def mock_open_tile_receiver_dependency(func):
     func = patch("CursorHandler.get_cursor", return_value=cursor_a)(func)
     func = patch("get_tile_if_openable", return_value=normal_tile)(func)
-    func = patch("open_tile", return_value=(open_range, tiles_str))(func)
+    func = patch("open_tile", return_value=opened_tile_points)(func)
+    func = patch("give_reward")(func)
+    func = patch("fetch_opened_tiles", return_value=(open_range, tiles))(func)
     func = patch("CursorHandler.view_includes_range", return_value=view_cursors)(func)
     func = patch("multicast_tiles_opened")(func)
     func = patch("detonate_mine", return_value=dead_cursors)(func)
     func = patch("multicast_you_died")(func)
-    func = patch("get_watchers", return_value=dead_cursor_watchers)(func)
+    func = patch("get_watchers_all", return_value=dead_cursor_watchers)(func)
     func = patch("multicast_cursors_died")(func)
 
     async def wrapper(*args, **kwargs):
         return await func(*args, **kwargs)
     return wrapper
+
 
 class OpenTileReceiver_TestCase(AsyncTestCase):
     @mock_open_tile_receiver_dependency
@@ -316,37 +352,42 @@ class OpenTileReceiver_TestCase(AsyncTestCase):
         get_cursor: MagicMock,
         get_tile_if_openable: AsyncMock,
         open_tile: AsyncMock,
+        give_reward:AsyncMock,
+        fetch_opened_tiles: AsyncMock,
         view_includes_range: MagicMock,
         multicast_tiles_opened: AsyncMock,
         detonate_mine: AsyncMock,
         multicast_you_died: AsyncMock,
-        get_watchers: MagicMock,
+        get_watchers_all: MagicMock,
         multicast_cursors_died: AsyncMock
     ):
         await OpenTileReceiver.receive_open_tile(example_message)
 
         open_tile.assert_called_once_with(point=cursor_a.pointer)
+        give_reward.assert_called_once_with(cursor_a, opened_tile_points)
         multicast_tiles_opened.assert_called_once_with(
-            target_conns=view_cursors, 
+            target_conns=view_cursors,
             point_range=open_range,
-            tiles_str=tiles_str
+            tiles_str=tiles.to_str()
         )
-        
+
         detonate_mine.assert_not_called()
         multicast_you_died.assert_not_called()
         multicast_cursors_died.assert_not_called()
-    
+
     @mock_open_tile_receiver_dependency
     async def test_tile_not_openable(
         self,
         get_cursor: MagicMock,
         get_tile_if_openable: AsyncMock,
         open_tile: AsyncMock,
+        give_reward:AsyncMock,
+        fetch_opened_tiles: AsyncMock,
         view_includes_range: MagicMock,
         multicast_tiles_opened: AsyncMock,
         detonate_mine: AsyncMock,
         multicast_you_died: AsyncMock,
-        get_watchers: MagicMock,
+        get_watchers_all: MagicMock,
         multicast_cursors_died: AsyncMock
     ):
         get_tile_if_openable.return_value = None
@@ -354,33 +395,36 @@ class OpenTileReceiver_TestCase(AsyncTestCase):
         await OpenTileReceiver.receive_open_tile(example_message)
 
         open_tile.assert_not_called()
+        give_reward.assert_not_called()
         multicast_tiles_opened.assert_not_called()
         detonate_mine.assert_not_called()
         multicast_you_died.assert_not_called()
         multicast_cursors_died.assert_not_called()
-    
+
     @mock_open_tile_receiver_dependency
     async def test_tile_is_mine(
         self,
         get_cursor: MagicMock,
         get_tile_if_openable: AsyncMock,
         open_tile: AsyncMock,
+        give_reward:AsyncMock,
+        fetch_opened_tiles: AsyncMock,
         view_includes_range: MagicMock,
         multicast_tiles_opened: AsyncMock,
         detonate_mine: MagicMock,
         multicast_you_died: AsyncMock,
-        get_watchers: MagicMock,
+        get_watchers_all: MagicMock,
         multicast_cursors_died: AsyncMock
     ):
         get_tile_if_openable.return_value = mine_tile
-        
+
         await OpenTileReceiver.receive_open_tile(example_message)
 
         open_tile.assert_called_once_with(point=cursor_a.pointer)
         multicast_tiles_opened.assert_called_once_with(
-            target_conns=view_cursors, 
+            target_conns=view_cursors,
             point_range=open_range,
-            tiles_str=tiles_str
+            tiles_str=tiles.to_str()
         )
         detonate_mine.assert_called_once_with(point=cursor_a.pointer)
         multicast_you_died.assert_called_once_with(target_conns=dead_cursors)

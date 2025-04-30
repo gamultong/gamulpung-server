@@ -1,7 +1,7 @@
 from typing import Generic, TypeVar
-from event.payload import Payload
+from event.payload import Payload, Empty
 from data.payload import (
-    EventEnum,
+    EventCollection,
     FetchTilesPayload,
     TilesPayload,
     SendChatPayload,
@@ -20,12 +20,12 @@ EVENT_TYPE = TypeVar(
 )
 
 DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
-    EventEnum.FETCH_TILES: FetchTilesPayload,
-    EventEnum.TILES: TilesPayload,
-    EventEnum.POINTING: PointingPayload,
-    EventEnum.MOVING: MovingPayload,
-    EventEnum.SET_VIEW_SIZE: SetViewSizePayload,
-    EventEnum.SEND_CHAT: SendChatPayload
+    EventCollection.FETCH_TILES   : FetchTilesPayload,
+    EventCollection.TILES         : TilesPayload,
+    EventCollection.POINTING      : PointingPayload,
+    EventCollection.MOVING        : MovingPayload,
+    EventCollection.SET_VIEW_SIZE : SetViewSizePayload,
+    EventCollection.SEND_CHAT     : SendChatPayload
 }
 
 @dataclass
@@ -50,9 +50,16 @@ class Message(Generic[EVENT_TYPE]):
             data = Message(event=self.event, payload=self.payload)
             del data.header
 
+        def __parse(obj):
+            return {
+                key : item
+                for key in obj.__dict__
+                if (item:=obj.__dict__[key]) is not Empty
+            }
+
         return json.dumps(
             data,
-            default=lambda o: o.__dict__,
+            default=__parse,
             sort_keys=True
         )
 

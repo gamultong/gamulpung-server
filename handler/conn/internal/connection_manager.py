@@ -7,7 +7,7 @@ from data.conn import Conn
 from event.message import Message
 from event.payload import DumbHumanException
 from data.payload import (
-    EventEnum, NewConnPayload, ConnClosedPayload, ErrorPayload
+    EventCollection, NewConnPayload, ConnClosedPayload, ErrorPayload
 )
 from event.broker import EventBroker
 
@@ -40,7 +40,7 @@ class ConnectionManager:
         ConnectionManager.conns[id] = conn_obj
 
         message = Message(
-            event=EventEnum.NEW_CONN,
+            event=EventCollection.NEW_CONN,
             payload=NewConnPayload(
                 conn_id=id,
                 height=height,
@@ -57,7 +57,7 @@ class ConnectionManager:
         ConnectionManager.conns.pop(conn.id)
 
         message = Message(
-            event=EventEnum.CONN_CLOSED,
+            event=EventCollection.CONN_CLOSED,
             header={"sender": conn.id},
             payload=ConnClosedPayload()
         )
@@ -123,6 +123,6 @@ class ConnectionManager:
 
 def create_rate_limit_exceeded_message() -> Message:
     return Message(
-        event=EventEnum.ERROR,
+        event=EventCollection.ERROR,
         payload=ErrorPayload(msg=f"rate limit exceeded. limit: {MESSAGE_RATE_LIMIT}")
     )

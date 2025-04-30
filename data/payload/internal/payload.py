@@ -1,13 +1,21 @@
-from event.payload import Payload, ParsablePayload
-
+from event.payload import Payload, ParsablePayload, Empty
+from typing import Generic, TypeVar
 from data.board import Point
 from data.cursor import Color
 
 from dataclasses import dataclass
 from enum import Enum
 
+DATA_TYPE = TypeVar(
+    "DATA_TYPE"
+)
+
 
 class EventEnum(str, Enum):
+    pass
+
+
+class EventCollection(EventEnum):
     ERROR = "error"
     SEND_CHAT = "send-chat"
     CHAT = "chat"
@@ -31,10 +39,48 @@ class EventEnum(str, Enum):
     FETCH_TILES = "fetch-tiles"
     TILES = "tiles"
 
+    # 일단 새로운 것들은 아래에 정리
+    SCOREBOARD_STATE = "scoreboard-state"
+
 
 class ClickType(str, Enum):
     GENERAL_CLICK = "GENERAL_CLICK"
     SPECIAL_CLICK = "SPECIAL_CLICK"
+
+@dataclass
+class ScoreBoardElement(Payload):
+    rank: int
+    score: int
+    before_rank: int|Empty = Empty
+
+@dataclass
+class ScoreboardStatePayload(Payload):
+    data: list[ScoreBoardElement]
+
+"""
+{
+    "data": [
+        {
+            "rank": 4
+            "score" : 12313
+            "before_rank": 2
+        },
+    ]
+}
+"""
+@dataclass
+class HeaderFrame(Payload):
+    event: str
+
+@dataclass
+class PayloadFrame(Payload):
+    header: ParsablePayload[HeaderFrame]
+    content: ParsablePayload[HeaderFrame]   
+
+@dataclass
+class DataPayload(Generic[DATA_TYPE], Payload):
+    id: str
+    data: DATA_TYPE|None = None
 
 
 @dataclass
@@ -126,17 +172,19 @@ class CursorQuitPayload(Payload):
     id: str
 
 @dataclass
-class CursorReviveAtPayload(Payload):
+class CursorPayload(Payload):
     id: str
     position: ParsablePayload[Point]
     pointer: ParsablePayload[Point] | None
     color: Color
     revive_at: str | None
+    score: int
 
 
 @dataclass
 class CursorsPayload(Payload):
-    cursors: list[CursorReviveAtPayload]
+    cursors: list[CursorPayload]
+
 
 @dataclass
 class MyCursorPayload(Payload):
@@ -150,14 +198,17 @@ class MyCursorPayload(Payload):
 class YouDiedPayload(Payload):
     revive_at: str
 
+
 @dataclass
 class SetViewSizePayload(Payload):
     width: int
     height: int
 
+
 @dataclass
 class SetFlagPayload(Payload):
     pass
+
 
 @dataclass
 class OpenTilePayload(Payload):

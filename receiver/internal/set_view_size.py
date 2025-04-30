@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 from data.payload import (
-    EventEnum, SetViewSizePayload, ErrorPayload
+    EventCollection, SetViewSizePayload, ErrorPayload
 )
 
 from handler.cursor import CursorHandler
@@ -17,7 +17,7 @@ from .utils import (
 )
 
 class SetViewSizeReceiver():
-    @EventBroker.add_receiver(EventEnum.SET_VIEW_SIZE)
+    @EventBroker.add_receiver(EventCollection.SET_VIEW_SIZE)
     @staticmethod
     async def receive_set_view_size(message: Message[SetViewSizePayload]):
         cursor = CursorHandler.get_cursor(message.header["sender"])
@@ -50,7 +50,7 @@ def validate_view_size(cursor: Cursor, new_width: int, new_height: int):
     if is_not_changed:
         # 변동 없음
         return Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg=f"view size is same as current size")
         )
 
@@ -61,7 +61,7 @@ def validate_view_size(cursor: Cursor, new_width: int, new_height: int):
     if is_over_view_limit:
         # 뷰 범위 한계 넘음
         return Message(
-            event=EventEnum.ERROR,
+            event=EventCollection.ERROR,
             payload=ErrorPayload(msg=f"view width or height should be more than 0 and less than {VIEW_SIZE_LIMIT}")
         )
 
