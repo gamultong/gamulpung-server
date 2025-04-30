@@ -1,6 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, Field
 
 class DataObj:
+    pass
+
+    # DataObj가 dataclass로 예측
+    # dataclass인지 vaildate 처리를 해주면 좋음
+
+    # hinting을 위해 명시
+    __dataclass_fields__:dict[str, Field]
+
     def copy(self):
         return self.__class__(
             **{
@@ -9,7 +17,18 @@ class DataObj:
             }
         )
     
+    def to_dict(self): 
+        def __item_parsing(item):
+            if issubclass(type(item), DataObj):
+                return item.to_dict()
+            return item
+        
+        return {
+            key : __item_parsing(self.__dict__[key])
+            for key in self.__dataclass_fields__
+        }
+    
 def copy(item):
-    if issubclass(type(item), DataObj):
+    if hasattr(item, "copy"):
         return item.copy()
     return item

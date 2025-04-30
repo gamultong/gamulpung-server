@@ -9,6 +9,7 @@ if __name__ == "__main__":
     from event.payload.test import *
 
     # data
+    from data.base.test import *
     from data.board.test import *
     from data.conn.test import *
     from data.cursor.test import *
