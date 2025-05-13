@@ -1,5 +1,8 @@
 if __name__ == "__main__":
     import unittest
+
+    from .utils_test import *
+
     # message
     from event.payload.test import *
 
@@ -28,4 +31,4 @@ if __name__ == "__main__":
     # receiver
     from receiver.test import *
 
-    unittest.main()
+    unittest.main(verbosity=1)
