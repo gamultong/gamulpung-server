@@ -16,6 +16,7 @@ from handler.cursor import CursorHandler
 
 from event.message import Message
 from event.broker import EventBroker
+from event.payload import Empty
 
 from .utils import multicast, broadcast
 
@@ -67,7 +68,7 @@ async def deliver_whole_scoreboard(cursor: Cursor):
 
 def create_scoreboard_state_message(scores: list[Score]):
     score_elements = [
-        ServerEvent.ScoreboardState.Elem(rank=score.rank, score=score.value)
+        ServerEvent.ScoreboardState.Elem(rank=score.rank, score=score.value, before_rank=Empty)
         for score in scores
     ]
 
