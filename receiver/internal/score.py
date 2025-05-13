@@ -7,6 +7,10 @@ from data.payload import (
     DataPayload
 )
 
+from data.conn.event import (
+    ServerEvent
+)
+
 from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException
 from handler.cursor import CursorHandler
 
@@ -15,18 +19,14 @@ from event.broker import EventBroker
 
 from .utils import multicast, broadcast
 
+
 class ScoreReceiver():
     @EventBroker.add_receiver(ScoreEvent.CREATED)
     @EventBroker.add_receiver(ScoreEvent.DELETED)
     @EventBroker.add_receiver(ScoreEvent.UPDATED)
     @staticmethod
-    async def receive_score_event(message: Message[DataPayload[Score]]):
+    async def notify_score_changed(message: Message[DataPayload[Score]]):
         old_score = message.payload.data
-
-        if old_score is None:
-            cursor = CursorHandler.get_cursor(message.payload.id)
-
-            await deliver_whole_scoreboard(cursor)
 
         cur_score = await get_current_score(message.payload.id)
 
@@ -35,6 +35,18 @@ class ScoreReceiver():
 
         await broadcast_scoreboard_state(scores)
 
+    @EventBroker.add_receiver(ScoreEvent.CREATED)
+    @staticmethod
+    async def score_created_initial_board(message: Message[DataPayload[Score]]):
+        cursor = CursorHandler.get_cursor(message.payload.id)
+
+        await deliver_whole_scoreboard(cursor)
+
+    @EventBroker.add_receiver(ScoreEvent.DELETED)
+    @staticmethod
+    async def save_deleted_score(message: Message[DataPayload[Score]]):
+        pass
+
 
 async def get_current_score(id: str):
     try:
@@ -42,7 +54,8 @@ async def get_current_score(id: str):
     except ScoreNotFoundException:
         return None
 
-async def deliver_whole_scoreboard(cursor:Cursor):
+
+async def deliver_whole_scoreboard(cursor: Cursor):
     length = min(SCOREBOARD_SIZE, await ScoreHandler.length())
 
     scores = await ScoreHandler.get_by_rank(start=1, end=length)
@@ -51,17 +64,19 @@ async def deliver_whole_scoreboard(cursor:Cursor):
         target_conns=[cursor], scores=scores
     )
 
+
 def create_scoreboard_state_message(scores: list[Score]):
     score_elements = [
-        ScoreBoardElement(rank=score.rank, score=score.value)
+        ServerEvent.ScoreboardState.Elem(rank=score.rank, score=score.value)
         for score in scores
     ]
 
-    payload = ScoreboardStatePayload(data=score_elements)
+    payload = ServerEvent.ScoreboardState(scores=score_elements)
     return Message(
         event=EventCollection.SCOREBOARD_STATE,
         payload=payload
     )
+
 
 async def multicast_scoreboard_state(target_conns: list[Cursor], scores: list[Score]):
     await multicast(
@@ -69,10 +84,12 @@ async def multicast_scoreboard_state(target_conns: list[Cursor], scores: list[Sc
         message=create_scoreboard_state_message(scores)
     )
 
-async def broadcast_scoreboard_state( scores: list[Score]):
+
+async def broadcast_scoreboard_state(scores: list[Score]):
     await broadcast(
         message=create_scoreboard_state_message(scores)
     )
+
 
 async def fetch_scoreboard(start, end):
     if start > SCOREBOARD_SIZE:
@@ -80,19 +97,20 @@ async def fetch_scoreboard(start, end):
     end = min(end, SCOREBOARD_SIZE)
     return await ScoreHandler.get_by_rank(start, end)
 
-async def get_rank_changed_range(old: Score|None, new: Score|None):
+
+async def get_rank_changed_range(old: Score | None, new: Score | None):
     if old is not None and new is not None:
         return sorted((old.rank, new.rank))
 
     length = await ScoreHandler.length()
 
-    def rank_or_length(score:Score|None):
+    def rank_or_length(score: Score | None):
         if score is None:
             return length
-    
+
         return score.rank
 
     start = rank_or_length(old)
-    end   = rank_or_length(new)
+    end = rank_or_length(new)
 
     return sorted((start, end))
