@@ -1,7 +1,7 @@
 from dataclasses import dataclass, Field
 from unittest.mock import MagicMock
 from unittest import TestCase
-from .utils import MockSet, override
+from .utils import MockSet, override, Wrapper as Wp
 
 from .nothing import example_wrapper
 
@@ -9,7 +9,7 @@ from .nothing import example_wrapper
 class ExampleMockSet(MockSet):
     __path__ = "tests.nothing"
 
-    foo: MagicMock = override(name="example", return_value=2)
+    foo: Wp[MagicMock] = override(name="example", return_value=2)
 
 
 class MockSet_TestCase(TestCase):

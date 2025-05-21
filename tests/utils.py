@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeVar, Generic, Any
 import inspect
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock, Mock
 
 
 def cases(case_list):
@@ -40,6 +40,13 @@ class override:
     side_effect: any = None
 
 
+MOCK_TYPE = TypeVar("MOCK_TYPE")
+
+
+class Wrapper(Generic[MOCK_TYPE]):
+    def __get__(self, obj: Any, owner: type[Any] | None) -> MOCK_TYPE: ...
+
+
 class MockSet:
     __path__: str
 
@@ -56,8 +63,7 @@ class MockSet:
         def wrapper(func):
             queue = []
 
-            # patch 대신 받아주는 함수
-            def func_wrapper(*args, **kwargs):
+            def make_mockset(args):
                 mock_set = cls()
                 offset = len(queue)
 
@@ -71,21 +77,37 @@ class MockSet:
 
                 # 기존 patch 인자 제거하고 mock_set만 넘김
                 args = args[:-offset]
-                return func(*args, mock_set=mock_set, **kwargs)
+                return args, mock_set
 
-            # 네임스페이스 patch 실행 -> func_wrapper 인자로 들어감.
+            # patch 대신 받아주는 함수
+
+            def func_wrapper(*args, **kwargs):
+                args, mock_set = make_mockset(args)
+                return func(*args, mock_set, **kwargs)
+
+            # patch 대신 받아주는 함수(async)
+            async def async_func_wrapper(*args, **kwargs):
+                args, mock_set = make_mockset(args)
+                return await func(*args, mock_set, **kwargs)
+
+            if inspect.iscoroutinefunction(func):
+                wrap_func = async_func_wrapper
+            else:
+                wrap_func = func_wrapper
+
+            # 네임스페이스 patch 실행 -> wrap_func 인자로 들어감.
             for key, _type in cls.__annotations__.items():
-                if _type not in (AsyncMock, MagicMock):
+                if not hasattr(_type, "__origin__") or _type.__origin__ is not Wrapper:
                     continue
                 item: override = cls.__dict__[key]
 
-                func_wrapper = patch(
+                wrap_func = patch(
                     item.name,
                     return_value=item.return_value,
                     side_effect=item.side_effect,
-                )(func_wrapper)
+                )(wrap_func)
 
                 queue.append(key)
 
-            return func_wrapper
+            return wrap_func
         return wrapper
