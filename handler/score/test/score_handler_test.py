@@ -1,3 +1,5 @@
+from data.score import Score
+from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException, RankOutOfRangeException
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
 from tests.utils import PathPatch
@@ -8,8 +10,7 @@ from event.message import Message
 from data.payload import DataPayload
 
 patch = PathPatch("handler.score.internal.score_handler")
-from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException, RankOutOfRangeException
-from data.score import Score
+
 
 class ScoreHandler_TestCase(AsyncTestCase):
     def setUp(self):
@@ -18,9 +19,9 @@ class ScoreHandler_TestCase(AsyncTestCase):
 
         self.score_storage = DictSpace[str, Score](
             "score", {
-            "A":self.score_a,
-            "B": self.score_b
-        })
+                "A": self.score_a,
+                "B": self.score_b
+            })
         self.rank_index = ArrayListSpace[str](
             "rank", [self.score_b.id, self.score_a.id]
         )
@@ -35,13 +36,13 @@ class ScoreHandler_TestCase(AsyncTestCase):
         )
 
     async def test_get_by_id_normal(self):
-        score_a = await ScoreHandler.get_by_id("A")
-        
+        score_a = await ScoreHandler.get("A")
+
         self.assertEqual(score_a, self.score_a)
 
     async def test_get_by_id_not_found(self):
         with self.assertRaises(ScoreNotFoundException):
-            await ScoreHandler.get_by_id("C")        
+            await ScoreHandler.get("C")
 
     async def test_get_by_rank_single(self):
         score, *_ = await ScoreHandler.get_by_rank(1)
@@ -76,7 +77,7 @@ class ScoreHandler_TestCase(AsyncTestCase):
     @patch("EventBroker.publish")
     async def test_update(self, mock: AsyncMock):
         score = await ScoreHandler.update(Score("A", 300))
-        
+
         mock.assert_called_once_with(
             message=Message(
                 event=ScoreEvent.UPDATED,
@@ -92,17 +93,15 @@ class ScoreHandler_TestCase(AsyncTestCase):
         self.assertEqual(self.score_storage.data["A"], score)
         self.assertEqual(self.score_storage.data["B"], Score("B", 200, 2))
 
-
     @patch("ScoreHandler.update")
     async def test_increase(self, mock: AsyncMock):
         result = Score("A", 300, 1)
         mock.return_value = result
 
         score = await ScoreHandler.increase("A", 200)
-        
+
         mock.assert_called_once_with(Score(cursor_id="A", value=300, rank=2))
         self.assertEqual(score, result)
-
 
     async def test_increase_notfound(self):
         # TODO
@@ -111,7 +110,7 @@ class ScoreHandler_TestCase(AsyncTestCase):
     @patch("EventBroker.publish")
     async def test_delete(self, mock: AsyncMock):
         await ScoreHandler.delete("B")
-       
+
         mock.assert_called_once_with(
             message=Message(
                 event=ScoreEvent.DELETED,
@@ -119,13 +118,13 @@ class ScoreHandler_TestCase(AsyncTestCase):
                     id=self.score_b.id,
                     data=self.score_b
                 )
-            ) 
+            )
         )
-        
+
         self.assertNotIn("B", self.score_storage.data)
         self.assertEqual(self.score_storage.data["A"], Score("A", 100, 1))
-    
+
     @patch("EventBroker.publish")
     async def test_delete_not_found(self, mock: AsyncMock):
-        with self.assertRaises(ScoreNotFoundException):        
+        with self.assertRaises(ScoreNotFoundException):
             await ScoreHandler.delete("C")

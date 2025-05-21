@@ -27,6 +27,7 @@ async def multicast(target_conns: list[str], message: Message):
         )
     )
 
+
 async def broadcast(message: Message):
     await EventBroker.publish(
         message=Message(
@@ -37,6 +38,7 @@ async def broadcast(message: Message):
             payload=message.payload
         )
     )
+
 
 async def fetch_tiles(start: Point, end: Point):
     tiles = await BoardHandler.fetch(start, end)
@@ -65,7 +67,7 @@ async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor
 
     for cursor in cursors:
         try:
-            score = await ScoreHandler.get_by_id(cursor.id)
+            score = await ScoreHandler.get(cursor.id)
         except ScoreNotFoundException:
             continue
 

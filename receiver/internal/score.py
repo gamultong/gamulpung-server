@@ -51,7 +51,7 @@ class ScoreReceiver():
 
 async def get_current_score(id: str):
     try:
-        return await ScoreHandler.get_by_id(id)
+        return await ScoreHandler.get(id)
     except ScoreNotFoundException:
         return None
 

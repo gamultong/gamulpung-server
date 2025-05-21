@@ -8,6 +8,7 @@ from data.payload import DataPayload
 from event.broker import EventBroker
 from event.message import Message
 
+
 class ScoreEvent(EventEnum):
     CREATED = "Score.created"
     UPDATED = "Score.updated"
@@ -17,27 +18,34 @@ class ScoreEvent(EventEnum):
 # publishable -> 권한 부여, 메서드 주입
 # identify.Event 자동
 
+
 class ScoreNotFoundException(Exception):
     pass
+
+
 class RankOutOfRangeException(Exception):
     pass
+
+
 class ScoreAlreadyExistsException(Exception):
     pass
 
-# @publishable 
+# @publishable
+
+
 class ScoreHandler:
-    __identify__:str = "Score"
+    __identify__: str = "Score"
     __event__: ScoreEvent
 
-    score_storage:KeyValueInterface[str, Score] = DictStorage.create_space(
+    score_storage: KeyValueInterface[str, Score] = DictStorage.create_space(
         key=__identify__ + ".score"
     )
-    rank_index:ListInterface[str] = ArrayListStorage.create_space(
+    rank_index: ListInterface[str] = ArrayListStorage.create_space(
         key=__identify__ + ".rank"
     )
 
     @classmethod
-    async def get_by_id(cls, id: str) -> Score:
+    async def get(cls, id: str) -> Score:
         score = await cls.score_storage.get(id)
         if score is None:
             raise ScoreNotFoundException()
@@ -45,13 +53,13 @@ class ScoreHandler:
         return score
 
     @classmethod
-    async def get_by_rank(cls, start:int, end:int|None=None) -> tuple[Score]:
+    async def get_by_rank(cls, start: int, end: int | None = None) -> tuple[Score]:
         if end is None:
             end = start
 
         if not (1 <= start <= end <= await cls.rank_index.length()):
             raise RankOutOfRangeException()
-        
+
         async def get_score_by_idx(idx: int):
             key = await cls.rank_index.get(idx)
             score = await cls.score_storage.get(key)
@@ -59,9 +67,9 @@ class ScoreHandler:
 
         result = [
             await get_score_by_idx(idx)
-            for idx in range(start-1, end) # 1,2,3 -> 0,1,2
+            for idx in range(start-1, end)  # 1,2,3 -> 0,1,2
         ]
-            
+
         return tuple(result)
 
     @classmethod
@@ -85,7 +93,7 @@ class ScoreHandler:
             event=ScoreEvent.UPDATED,
             payload=DataPayload(id=current.id, data=current)
         )
-        
+
         await EventBroker.publish(message=message)
 
         return score
@@ -98,7 +106,7 @@ class ScoreHandler:
 
         score = Score(id, 0)
         score = await cls.__create(score=score)
-        
+
         message = Message(
             event=ScoreEvent.CREATED,
             payload=DataPayload(id=id)
@@ -116,16 +124,16 @@ class ScoreHandler:
             raise ScoreNotFoundException()
 
         await cls.__delete(score)
-        
+
         await EventBroker.publish(
             message=Message(
                 event=ScoreEvent.DELETED,
-                payload=DataPayload(id=score.id,data=score)
+                payload=DataPayload(id=score.id, data=score)
             )
         )
 
     @classmethod
-    async def __delete(cls, score:Score):
+    async def __delete(cls, score: Score):
         await cls.score_storage.delete(score.id)
         await cls.rank_index.pop(score.rank - 1)
 
@@ -133,10 +141,10 @@ class ScoreHandler:
         await cls.__adjust_rank_range(score.rank, length)
 
     @classmethod
-    async def __create(cls, score:Score):
+    async def __create(cls, score: Score):
         score = score.copy()
         score.rank = await cls.rank_index.length() + 1
-        
+
         await cls.rank_index.append(score.id)
         await cls.score_storage.set(score.id, score)
         return score
@@ -159,16 +167,16 @@ class ScoreHandler:
         return score
 
     @classmethod
-    async def __adjust_rank_range(cls, start_rank:int, before_rank:int):
+    async def __adjust_rank_range(cls, start_rank: int, before_rank: int):
         for idx in range(start_rank - 1, before_rank):
             id = await cls.rank_index.get(idx)
             score = await cls.score_storage.get(id)
-            
+
             score.rank = idx + 1
             await cls.score_storage.set(score.id, score)
 
     @classmethod
-    async def __find_rank(cls, value:int):
+    async def __find_rank(cls, value: int):
         length = await cls.rank_index.length()
         for i in range(length):
             id = await cls.rank_index.get(i)
