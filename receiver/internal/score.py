@@ -38,7 +38,7 @@ class ScoreReceiver():
 
     @EventBroker.add_receiver(ScoreEvent.CREATED)
     @staticmethod
-    async def score_created_initial_board(message: Message[DataPayload[Score]]):
+    async def send_initial_scoreboard(message: Message[DataPayload[Score]]):
         cursor = CursorHandler.get_cursor(message.payload.id)
 
         await deliver_whole_scoreboard(cursor)
