@@ -1,17 +1,21 @@
+from typing import get_args, get_origin
 from data.base import DataObj
 
 from dataclasses import dataclass
 from typing import Type, TypeVar
 
+
 class Event(DataObj):
-    event_name:str
+    event_name: str
 
     def assert_valid(self):
         pass
-    
+
+
 EVENT_DICT: dict[str, Event] = {}
 
 T = TypeVar('T', bound=Event)
+
 
 def event(event: Type[T]) -> Type[T]:
     assert issubclass(event, Event)
@@ -22,18 +26,22 @@ def event(event: Type[T]) -> Type[T]:
 
 
 class ValidationException(Exception):
-    def __init__(self, event:Event, msg: str):
+    def __init__(self, event: Event, msg: str):
         self.event = event
         self.msg = msg
+
 
 class Empty:
     pass
 
+
 class ClientEvent(Event):
     pass
 
+
 class ServerEvent(Event):
     pass
+
 
 def to_message(event: Event):
     return {
@@ -43,50 +51,65 @@ def to_message(event: Event):
         "content": event.to_dict()
     }
 
-from typing import get_args, get_origin
 
-def data_obj_parsing(data:dict, data_type:type[DataObj]):
-    param = {}
-
+def get_anno_items(data_type: type[DataObj]):
     for key in data_type.__dataclass_fields__:
-        field_type = data_type.__annotations__[key] # 받고자 하는 타입
-        try:
-            field_data = data.pop(key) # 실제 데이터
-        except KeyError:
-            # 원하는 필드가 존재하지 않음
+        yield key, data_type.__annotations__[key]
+
+
+def parsing_type(field_type: type):
+    origin_type = get_origin(field_type)
+    if origin_type is None:
+        return field_type, None
+    args_type = get_args(field_type)
+    assert len(args_type) == 1
+
+    return origin_type, args_type[0]
+
+
+def data_obj_parsing(data: dict, data_type: type[DataObj]):
+    param = {}
+    for key, field_type in get_anno_items(data_type):
+
+        if key not in data:
             raise InvalidEventFormat
 
-        origin_type = get_origin(field_type) # list[Event] 같이 감싸져있나
-        if origin_type is None:
-            
-            if issubclass(field_type, DataObj):
-                # DataObj이면 재귀로 매핑
+        field_data = data[key]
+
+        origin_type, arg_type = parsing_type(field_type)
+
+        if arg_type is None:
+            if issubclass(origin_type, DataObj):
+                # ex) DataObj
                 param[key] = data_obj_parsing(field_data, field_type)
-                continue
+            else:
+                # ex) str
+                param[key] = field_data
+        else:
+            def func(fd): return data_obj_parsing(fd, arg_type)
+            assert origin_type is list
+            if issubclass(arg_type, DataObj):
+                if origin_type is list:
+                    # ex) list[DataObj]
+                    param[key] = [func(fd) for fd in field_data]
+                if origin_type is dict:
+                    # ex) dict[DataObj]
+                    param[key] = {
+                        key: func(fd)
+                        for key, fd in field_data.items()
+                    }
+            else:
+                # ex) list[str]
+                param[key] = field_data
 
-            param[key] = field_data
-            continue
-
-        # list[T]
-        assert origin_type is list 
-
-        args_type = get_args(field_type)
-        assert len(args_type) == 1 # 타입이 1개임을 검증
-        
-        arg_type = args_type[0]
-        if issubclass(arg_type, DataObj):
-            param[key] = [data_obj_parsing(fd, arg_type) for fd in field_data]
-            continue
-
-        param[key] = field_data
-
-    if len(data) > 0:
+    if len(data) > len(param):
         # 원하지 않는 필드가 들어있음
         raise InvalidEventFormat
 
     return data_type(**param)
-                
-def from_message(message:dict):
+
+
+def from_message(message: dict):
     try:
         heeader = message["header"]
         event = heeader["event"]
@@ -94,14 +117,15 @@ def from_message(message:dict):
     except KeyError:
         # 메시지 포맷이 잘못됨
         raise InvalidEventFormat
-    
+
     try:
         type = EVENT_DICT[event]
     except KeyError:
         # event가 존재하지 않음
         raise InvalidEventFormat
-    
+
     return data_obj_parsing(content, type)
+
 
 class InvalidEventFormat(Exception):
     pass

@@ -1,1 +1,1 @@
-from .cursor_handler_test import CursorHandlerTestCase
+from .cursor_handler_test import *

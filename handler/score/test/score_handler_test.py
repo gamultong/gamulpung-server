@@ -63,30 +63,17 @@ class ScoreHandler_TestCase(AsyncTestCase):
         with self.assertRaises(RankOutOfRangeException):
             await ScoreHandler.get_by_rank(2, 1)
 
-    @patch("EventBroker.publish")
+    @patch("publish_data_event")
     async def test_create(self, mock: AsyncMock):
         await ScoreHandler.create("C")
-        mock.assert_called_once_with(
-            message=Message(
-                event=ScoreEvent.CREATED,
-                payload=DataPayload(id="C")
-            )
-        )
+        mock.assert_called_once_with(ScoreEvent.CREATED, id="C")
         self.assertEqual(self.score_storage.data["C"], Score("C", 0, 3))
 
-    @patch("EventBroker.publish")
+    @patch("publish_data_event")
     async def test_update(self, mock: AsyncMock):
         score = await ScoreHandler.update(Score("A", 300))
 
-        mock.assert_called_once_with(
-            message=Message(
-                event=ScoreEvent.UPDATED,
-                payload=DataPayload(
-                    id=self.score_a.id,
-                    data=self.score_a,
-                )
-            )
-        )
+        mock.assert_called_once_with(ScoreEvent.UPDATED, data=self.score_a)
 
         self.assertNotEqual(self.score_storage.data["A"], self.score_a)
         self.assertEqual(self.score_storage.data["A"], Score("A", 300, 1))
@@ -107,24 +94,18 @@ class ScoreHandler_TestCase(AsyncTestCase):
         # TODO
         pass
 
-    @patch("EventBroker.publish")
+    @patch("publish_data_event")
     async def test_delete(self, mock: AsyncMock):
         await ScoreHandler.delete("B")
 
-        mock.assert_called_once_with(
-            message=Message(
-                event=ScoreEvent.DELETED,
-                payload=DataPayload(
-                    id=self.score_b.id,
-                    data=self.score_b
-                )
-            )
-        )
+        mock.assert_called_once_with(ScoreEvent.DELETED, data=self.score_b)
 
         self.assertNotIn("B", self.score_storage.data)
         self.assertEqual(self.score_storage.data["A"], Score("A", 100, 1))
 
-    @patch("EventBroker.publish")
+    @patch("publish_data_event")
     async def test_delete_not_found(self, mock: AsyncMock):
         with self.assertRaises(ScoreNotFoundException):
             await ScoreHandler.delete("C")
+
+            mock.assert_not_called()

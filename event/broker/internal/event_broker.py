@@ -34,7 +34,7 @@ class Receiver(Generic[EVENT_TYPE]):
         return await self.func(msg)
 
     def __repr__(self):
-        return f"{self.events} -> {self.func}"
+        return f"{self.events} -> {self.func}({self.func.__name__})"
 
     @staticmethod
     def get_receiver(id: str) -> Receiver | None:

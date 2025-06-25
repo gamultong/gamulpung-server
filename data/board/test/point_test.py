@@ -1,5 +1,5 @@
 import unittest
-from data.board import Point
+from data.board import Point, PointRange
 
 
 class PointTestCase(unittest.TestCase):
@@ -23,3 +23,13 @@ class PointTestCase(unittest.TestCase):
 
         p = Point.unmarshal_bytes(data)
         self.assertEqual(expected, p)
+
+
+class PointRange_TestCase(unittest.TestCase):
+    def test_in_range(self):
+        r = PointRange(Point(-1, 1), Point(1, -1))
+
+        self.assertTrue(r.is_in(Point(-1, 1)))
+        self.assertTrue(r.is_in(Point(1, -1)))
+        self.assertTrue(r.is_in(Point(0, 0)))
+        self.assertFalse(r.is_in(Point(2, 2)))

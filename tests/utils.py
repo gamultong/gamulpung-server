@@ -7,17 +7,26 @@ from unittest.mock import patch, AsyncMock, MagicMock, Mock
 def cases(case_list):
     def wrapper(func):
         if inspect.iscoroutinefunction(func):
-            async def async_func_wrapper(*arg, **kwargs):
+            async def async_func_wrapper(*args, **kwargs):
+                mock = args[0]
+                if hasattr(mock, "setUp"):
+                    mock.setUp()
+                if hasattr(mock, "asyncSetUp"):
+                    await mock.asyncSetUp()
+
                 for i in case_list:
                     kwargs.update(i)
-                    await func(*arg, **kwargs)
+                    await func(*args, **kwargs)
 
             return async_func_wrapper
 
-        def func_wrapper(*arg, **kwargs):
+        def func_wrapper(*args, **kwargs):
+            mock = args[0]
+            if hasattr(mock, "setUp"):
+                mock.setUp()
             for i in case_list:
                 kwargs.update(i)
-                func(*arg, **kwargs)
+                func(*args, **kwargs)
         return func_wrapper
     return wrapper
 

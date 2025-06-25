@@ -1,201 +1,363 @@
-from data.board import Point
+from data.base.utils import Relation
+from data.board import Point, PointRange, overlaps
 from data.cursor import Cursor, Color
-from .cursor_exception import (
-    AlreadyWatchingException,
-    NoMatchingCursorException,
-    NotWatchableException,
-    NotWatchingException
-)
+
+from . import cursor_exception as CursorException
+
+from event.payload import DumbHumanException
+from event.broker import publish_data_event
+
+from data.payload import EventEnum, DataPayload
+
+from handler.storage.interface import KeyValueInterface, ListInterface
+from handler.storage.dict import DictStorage
+from handler.storage.list.array import ArrayListStorage
+from data.payload import DataPayload
+from event.broker import publish_data_event
+from event.message import Message
+
+from config import MOVE_RANGE
+
+from datetime import datetime, timedelta
+from typing import Callable
+
+
+class CursorEvent(EventEnum):
+    WINDOW_SIZE_SET = "Cursor.WINDOW_SIZE_SET"
+    MOVED = "Cursor.MOVED"
+    REVIVE = "Cursor.REVIVE"
+    DEATH = "Cursor.DEATH"
+    POINTING = "Cursor.POINTING"
+    CREATED = "Cursor.CREATED"
+    DELETE = "Cursor.DELETE"
 
 
 class CursorHandler:
-    cursor_dict: dict[str, Cursor] = {}
+    __identify__: str = "Cursor"
+    __event__: CursorEvent
 
-    watchers: dict[str, list[str]] = {}
-    watching: dict[str, list[str]] = {}
+    # 메인 스토리지
+    cursor_storage: KeyValueInterface[str, Cursor] = DictStorage.create_space(
+        key=__identify__ + ".cursor"
+    )
 
-    @staticmethod
-    def create_cursor(conn_id: str, position: Point, width: int, height: int):
-        cursor = Cursor.create(conn_id)
-        cursor.position = position
-        cursor.set_size(width=width, height=height)
+    # 부가 스토리지
+    # Handler <-1---N-> Space
+    # Data    <-1---N-> Space
+    watcher_storage: KeyValueInterface[str, Relation[str]] = DictStorage.create_space(
+        key=__identify__ + ".watcher"
+    )
+    target_storage: KeyValueInterface[str, Relation[str]] = DictStorage.create_space(
+        key=__identify__ + ".target"
+    )
 
-        CursorHandler.cursor_dict[conn_id] = cursor
+    @classmethod
+    async def add_watcher(cls, watcher: Cursor, target: Cursor):
+        if not watcher.check_in_view(target.position):
+            raise CursorException.NotWatchable()
+
+        targets = await cls.target_storage.get(watcher.id) or Relation[str](_id=watcher.id)
+        watchers = await cls.watcher_storage.get(target.id) or Relation[str](_id=target.id)
+
+        if (target.id in targets.relations) or (watcher.id in watchers.relations):
+            raise CursorException.AlreadyWatching
+
+        targets.relations.append(target.id)
+        watchers.relations.append(watcher.id)
+
+        await cls.target_storage.set(watcher.id, targets)
+        await cls.watcher_storage.set(target.id, watchers)
+
+    @classmethod
+    async def remove_watcher(cls, watcher: Cursor, target: Cursor):
+        targets = await cls.target_storage.get(watcher.id) or Relation[str](_id=watcher.id)
+        watchers = await cls.watcher_storage.get(target.id) or Relation[str](_id=target.id)
+
+        if not ((target.id in targets.relations) and (watcher.id in watchers.relations)):
+            raise CursorException.NotWatching
+
+        targets.relations.remove(target.id)
+        watchers.relations.remove(watcher.id)
+
+        await cls.target_storage.set(watcher.id, targets)
+        await cls.watcher_storage.set(target.id, watchers)
+
+    @classmethod  # argument가 id인 이유 -> get해서 최신 cursor 받아와야함
+    async def revive(cls, id: str) -> Cursor:
+        cursor = await cls.get(id)
+
+        # vaildate
+        if cursor.revive_at is None:
+            raise CursorException.NotDead
+        if cursor.revive_at > datetime.now():
+            raise CursorException.CannotRevive
+
+        cursor.revive_at = None
+        await cls._update(cursor)
+
+        await publish_data_event(CursorEvent.REVIVE, data=cursor)
 
         return cursor
 
-    @staticmethod
-    def remove_cursor(conn_id: str):
-        if conn_id in CursorHandler.cursor_dict:
-            del CursorHandler.cursor_dict[conn_id]
+    @classmethod
+    async def set_window_size(cls, id: str, width: int, height: int):
+        if width < 0 or height < 0:
+            raise CursorException.InvalidParameter("width and height cannot be negative")
 
-    @staticmethod
-    def get_cursor(conn_id: str) -> Cursor | None:
-        if conn_id in CursorHandler.cursor_dict:
-            return CursorHandler.cursor_dict[conn_id]
+        cursor = await cls.get(id)
+        prev_cur = cursor.copy()
 
-    # range 안에 커서가 있는가
-    @staticmethod
-    def exists_range(
-        start: Point, end: Point, exclude_ids: list[str] = [],
-        exclude_start: Point | None = None, exclude_end: Point | None = None
-    ) -> list[Cursor]:
-        result = []
-        for cursor_id in CursorHandler.cursor_dict:
-            if cursor_id in exclude_ids:
-                continue
+        cursor.width, cursor.height = width, height
 
-            cursor = CursorHandler.cursor_dict[cursor_id]
-            pos = cursor.position
-            # start & end 범위를 벗어나는가
-            if \
-                    start.x > pos.x or end.x < pos.x or \
-                    end.y > pos.y or start.y < pos.y:
-                continue
+        await cls._justify_targets(cursor=cursor)
 
-            # exclude_range 범위에 들어가는가
-            if exclude_start is not None and exclude_end is not None:
-                if \
-                        pos.x >= exclude_start.x and pos.x <= exclude_end.x and \
-                        pos.y >= exclude_end.y and pos.y <= exclude_start.y:
-                    continue
+        await cls._update(cursor=cursor)
 
-            result.append(cursor)
+        await publish_data_event(CursorEvent.WINDOW_SIZE_SET, data=prev_cur)
 
-        return result
+        return cursor
 
-    # 커서 view에 tile이 포함되는가
-    @staticmethod
-    def view_includes_point(p: Point, exclude_ids: list[str] = []) -> list[Cursor]:
-        result = []
-        for cursor_id in CursorHandler.cursor_dict:
-            if cursor_id in exclude_ids:
-                continue
+    @classmethod
+    async def move(cls, id: str, p: Point) -> Cursor:
+        cursor = await cls.get(id)
+        prev_cur = cursor.copy()
 
-            cursor = CursorHandler.cursor_dict[cursor_id]
+        movable_range = get_movable_range(cursor.position)
+        if cursor.position == p or not movable_range.is_in(p):
+            raise CursorException.NotMovable
 
-            # 커서 뷰 범위를 벗어나는가
-            if not cursor.check_in_view(p):
-                continue
+        cursor.position = p
 
-            result.append(cursor)
+        await cls._justify_targets(cursor)
+        await cls._justify_watchers(cursor)
 
-        return result
+        await cls._update(cursor=cursor)
 
-    # 커서 view에 range가 포함되는가
-    @staticmethod
-    def view_includes_range(start: Point, end: Point, exclude_ids: list[str] = []) -> list[Cursor]:
-        result = []
-        for cursor_id in CursorHandler.cursor_dict:
-            if cursor_id in exclude_ids:
-                continue
+        await publish_data_event(CursorEvent.MOVED, data=prev_cur)
 
-            cursor = CursorHandler.cursor_dict[cursor_id]
+        return cursor
 
-            left_top = Point(
-                x=cursor.position.x - cursor.width,
-                y=cursor.position.y + cursor.height
-            )
-            right_bottom = Point(
-                x=cursor.position.x + cursor.width,
-                y=cursor.position.y - cursor.height
-            )
+    @classmethod
+    async def set_pointer(cls, id: str, p: Point) -> Cursor:
+        cursor = await cls.get(id)
+        prev_cur = cursor.copy()
 
-            # left_top이 end보다 오른쪽 혹은 아래인가
-            if left_top.x > end.x or left_top.y < end.y:
-                continue
-            # right_bottom이 start 보다 왼쪽 혹은 위인가
-            if right_bottom.x < start.x or right_bottom.y > start.y:
-                continue
+        if not cursor.check_in_view(p):
+            raise CursorException.NotPointable
 
-            result.append(cursor)
+        cursor.pointer = p
 
-        return result
+        await cls._update(cursor=cursor)
 
-    @staticmethod
-    def add_watcher(watcher: Cursor, watching: Cursor) -> None:
-        watcher_id = watcher.id
-        watching_id = watching.id
+        await publish_data_event(CursorEvent.POINTING, data=prev_cur)
 
-        watcher_exists = CursorHandler.check_cursor_exists(watcher_id)
-        if not watcher_exists:
-            raise NoMatchingCursorException(watcher_id)
+        return cursor
 
-        watching_exists = CursorHandler.check_cursor_exists(watching_id)
-        if not watching_exists:
-            raise NoMatchingCursorException(watching_id)
+    @classmethod
+    async def kill(cls, id: str, duration: timedelta) -> Cursor:
+        cursor = await cls.get(id)
+        prev_cur = cursor.copy()
 
-        if CursorHandler.check_cursor_watching(watching_id, watcher_id):
-            raise AlreadyWatchingException(watcher=watcher_id, watching=watching_id)
+        # vaildate
+        if cursor.revive_at is not None:
+            raise CursorException.NotAlive
 
-        if not watcher.check_in_view(watching.position):
-            raise NotWatchableException(p=watching.position, cursor_id=watcher.id)
+        now = datetime.now()
 
-        if not watcher_id in CursorHandler.watching:
-            CursorHandler.watching[watcher_id] = []
-        CursorHandler.watching[watcher_id].append(watching_id)
+        cursor.revive_at = now + duration
 
-        if not watching_id in CursorHandler.watchers:
-            CursorHandler.watchers[watching_id] = []
-        CursorHandler.watchers[watching_id].append(watcher_id)
+        await cls._update(cursor=cursor)
 
-    @staticmethod
-    def remove_watcher(watcher: Cursor, watching: Cursor):
-        watcher_id = watcher.id
-        watching_id = watching.id
+        await publish_data_event(CursorEvent.DEATH, data=prev_cur)
 
-        watcher_exists = CursorHandler.check_cursor_exists(watcher_id)
-        if not watcher_exists:
-            raise NoMatchingCursorException(watcher_id)
+        return cursor
 
-        watching_exists = CursorHandler.check_cursor_exists(watching_id)
-        if not watching_exists:
-            raise NoMatchingCursorException(watching_id)
+    @classmethod
+    async def _justify_watchers(cls, cursor: Cursor):
+        old_watchers = await cls.get_watchers(cursor=cursor)
+        current_watchers = await cls.get_by_watching_point(
+            point=cursor.position,
+            filters=[lambda c:c.id != cursor.id]
+        )
 
-        if not CursorHandler.check_cursor_watching(watching_id, watcher_id):
-            raise NotWatchingException(watcher=watcher_id, watching=watching_id)
+        to_remove, _, to_add = diff_cursors(old_watchers, current_watchers)
+        for other_cursor in to_remove:
+            await cls.remove_watcher(watcher=other_cursor, target=cursor)
+        for other_cursor in to_add:
+            await cls.add_watcher(watcher=other_cursor, target=cursor)
 
-        CursorHandler.watching[watcher_id].remove(watching_id)
-        if len(CursorHandler.watching[watcher_id]) == 0:
-            del CursorHandler.watching[watcher_id]
+    @classmethod
+    async def _justify_targets(cls, cursor: Cursor):
+        old_targets = await cls.get_targets(cursor=cursor)
+        current_targets = await cls.get_by_range(
+            range=cursor.view_range,
+            filters=[lambda c: c.id != cursor.id]
+        )
 
-        CursorHandler.watchers[watching_id].remove(watcher_id)
-        if len(CursorHandler.watchers[watching_id]) == 0:
-            del CursorHandler.watchers[watching_id]
+        to_remove, _, to_add = diff_cursors(old_targets, current_targets)
+        for other_cursor in to_remove:
+            await cls.remove_watcher(watcher=cursor, target=other_cursor)
+        for other_cursor in to_add:
+            await cls.add_watcher(watcher=cursor, target=other_cursor)
 
-    @staticmethod
-    def get_watchers_id(cursor_id: str) -> list[str]:
-        if not CursorHandler.check_cursor_exists(cursor_id):
-            raise NoMatchingCursorException(cursor_id)
-
-        if cursor_id in CursorHandler.watchers:
-            return CursorHandler.watchers[cursor_id].copy()
-
-        return []
-
-    @staticmethod
-    def get_watching_id(cursor_id: str) -> list[str]:
-        if not CursorHandler.check_cursor_exists(cursor_id):
-            raise NoMatchingCursorException(cursor_id)
-
-        if cursor_id in CursorHandler.watching:
-            return CursorHandler.watching[cursor_id].copy()
-
-        return []
-
-    @staticmethod
-    def check_cursor_exists(id: str):
-        return id in CursorHandler.cursor_dict
-
-    @staticmethod
-    def check_cursor_watching(watching_id: str, watcher_id: str):
+    @classmethod
+    async def _update(cls, cursor: Cursor):
         """
-        커서 watching 관계가 형성되어 있으면 True
+        무조건 유효한 커서를 넘겨야 함. 
         """
-        watcher_rel = watching_id in CursorHandler.watchers
-        watcher_rel = watcher_rel and watcher_id in CursorHandler.watchers[watching_id]
+        await cls.cursor_storage.set(key=cursor.id, value=cursor)
 
-        watching_rel = watcher_id in CursorHandler.watching
-        watching_rel = watching_rel and watching_id in CursorHandler.watching[watcher_id]
+    @classmethod
+    async def create(cls, template: Cursor) -> Cursor:
+        existing = await cls.cursor_storage.get(template.id)
+        if existing is not None:
+            raise CursorException.AlreadyExists
 
-        return watcher_rel and watching_rel
+        await cls.cursor_storage.set(template.id, template)
+
+        await publish_data_event(CursorEvent.CREATED, id=template.id)
+
+        return template.copy()
+
+    @classmethod
+    async def delete(cls, id: str) -> Cursor:
+        cur = await cls.cursor_storage.get(id)
+        if cur is None:
+            raise CursorException.NotFound
+
+        await cls.cursor_storage.delete(id)
+
+        await publish_data_event(CursorEvent.DELETE, data=cur)
+
+    @classmethod
+    async def get(cls, id: str) -> Cursor:
+        cur = await cls.cursor_storage.get(id)
+        if cur is None:
+            raise CursorException.NotFound
+
+        return cur
+
+    @classmethod
+    async def get_by_range(cls, range: PointRange, filters: list[Callable[[Cursor], bool]] | None = None) -> list[Cursor]:
+        result = []
+        for id in await cls.cursor_storage.keys():
+            cursor = await cls.cursor_storage.get(id)
+
+            if not range.is_in(cursor.position):
+                continue
+
+            if filters is not None and not all(filter(cursor) for filter in filters):
+                continue
+
+            result.append(cursor)
+
+        return result
+
+    @classmethod
+    async def get_by_point(cls, point: Point) -> list[Cursor]:
+        return await cls.get_by_range(PointRange(point, point))
+
+    @classmethod
+    async def get_by_watching_range(cls, range: PointRange, filters: list[Callable[[Cursor], bool]] | None = None) -> list[Cursor]:
+        result = []
+
+        for id in await cls.cursor_storage.keys():
+            cursor = await cls.cursor_storage.get(id)
+
+            if not overlaps(cursor.view_range, range):
+                continue
+
+            if filters is not None and not all(filter(cursor) for filter in filters):
+                continue
+
+            result.append(cursor)
+
+        return result
+
+    @classmethod
+    async def get_by_watching_point(cls, point: Point, filters: list[Callable[[Cursor], bool]] | None = None) -> list[Cursor]:
+        return await cls.get_by_watching_range(PointRange(point, point), filters)
+
+    @classmethod
+    async def get_watchers(cls, cursor: Cursor) -> list[Cursor]:
+        ids = await cls.watcher_storage.get(cursor.id)
+
+        return [await cls.get(id) for id in ids]
+
+    @classmethod
+    async def get_targets(cls, cursor: Cursor) -> list[Cursor]:
+        ids = await cls.target_storage.get(cursor.id)
+
+        return [await cls.get(id) for id in ids]
+
+
+# return -> [a_only, both, b_only]
+def diff_cursors(a_list: list[Cursor], b_list: list[Cursor]) -> tuple[list[Cursor]]:
+    res = {cur.id: 1 for cur in a_list}
+    res.update({cur.id: 1 for cur in b_list})
+
+    cur_dict = {cur.id: cur for cur in a_list}
+    cur_dict.update({cur.id: cur for cur in b_list})
+
+    for cur in a_list:
+        res[cur.id] -= 1
+    for cur in b_list:
+        res[cur.id] += 1
+
+    result = [[], [], []]
+    for id, idx in res.items():
+        result[idx].append(cur_dict[id])
+
+    return result
+
+
+def get_movable_range(p: Point) -> PointRange:
+    distance = MOVE_RANGE
+
+    return PointRange.create_by_mid(p, width=distance, height=distance)
+
+
+"""
+method list
+- create
+- delete
+- update -> 아예 update
+
+WINDOW_SIZE_SET
+
+move receiver에서 처리
+
+WINDOW_SIZE_SET = "Cursor.WINDOW_SIZE_SET"
+MOVED = "Cursor.MOVED"
+DEATH = "Cursor.DEATH"
+POINTING = "Cursor.POINTING"
+
+move -> 따로
+    cursor_storage
+    watcher_storage
+    watching_storage
+
+
+내부 메서드
+- add_relation(watcher, watching)
+- remove_relation(watcher, watching)
+
+- add_watcher
+- remove_watcher
+- add_watching -> watcher wrapper
+- remove_watching -> watcher wrapper
+
+-> 사용측에서 (모르고) 둘 다 쓰게 된다면?
+
+-> 외부 접근 x
+watcher_storage  
+watching_storage
+reason
+    cursor_storage에서 carculate 완전 대채 가능 -> cache
+
+
+    ======== 다음!!!!!!! =============
+receiver test 만들고
+receiver 구현 하면서 필요 method 구상
+-> 이거 구현
+"""

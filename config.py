@@ -17,4 +17,6 @@ OPEN_TILE_SCORE = int(os.environ.get("OPEN_TILE_SCORE"))
 SET_FLAG_SCORE = int(os.environ.get("SET_FLAG_SCORE"))
 MOVE_SCORE = int(os.environ.get("MOVE_SCORE"))
 
+MOVE_RANGE = int(os.environ.get("MOVE_RANGE"))
+
 SCOREBOARD_SIZE = int(os.environ.get("SCOREBOARD_SIZE"))

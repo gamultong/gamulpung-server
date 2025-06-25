@@ -5,7 +5,7 @@ from handler.storage.interface import KeyValueInterface, ListInterface
 from handler.storage.dict import DictStorage
 from handler.storage.list.array import ArrayListStorage
 from data.payload import DataPayload
-from event.broker import EventBroker
+from event.broker import EventBroker, publish_data_event
 from event.message import Message
 
 
@@ -43,6 +43,8 @@ class ScoreHandler:
     rank_index: ListInterface[str] = ArrayListStorage.create_space(
         key=__identify__ + ".rank"
     )
+
+    # external_method start
 
     @classmethod
     async def get(cls, id: str) -> Score:
@@ -89,12 +91,7 @@ class ScoreHandler:
 
         score = await cls.__update(current, score.value)
 
-        message = Message(
-            event=ScoreEvent.UPDATED,
-            payload=DataPayload(id=current.id, data=current)
-        )
-
-        await EventBroker.publish(message=message)
+        await publish_data_event(ScoreEvent.UPDATED, data=current)
 
         return score
 
@@ -107,11 +104,7 @@ class ScoreHandler:
         score = Score(id, 0)
         score = await cls.__create(score=score)
 
-        message = Message(
-            event=ScoreEvent.CREATED,
-            payload=DataPayload(id=id)
-        )
-        await EventBroker.publish(message=message)
+        await publish_data_event(ScoreEvent.CREATED, id=id)
 
     @classmethod
     async def length(cls):
@@ -125,12 +118,9 @@ class ScoreHandler:
 
         await cls.__delete(score)
 
-        await EventBroker.publish(
-            message=Message(
-                event=ScoreEvent.DELETED,
-                payload=DataPayload(id=score.id, data=score)
-            )
-        )
+        await publish_data_event(ScoreEvent.DELETED, data=score)
+
+    # external_method end
 
     @classmethod
     async def __delete(cls, score: Score):
