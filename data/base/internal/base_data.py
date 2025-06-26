@@ -30,27 +30,7 @@ class DataObj:
             for key in self.__dataclass_fields__
         }
 
-from typing import TypeVar, Generic, Union, _SpecialForm, SupportsBytes
 
-DATAOBJ_TYPE = TypeVar("DATAOBJ_TYPE", DataObj)
-
-# @_SpecialForm
-# def SubDataObj(self, parameters):
-#     assert len(parameters) == 1
-
-#     return _UnionGenericAlias(self, parameters)
-
-from typing import Optional 
-
-class SubData(Generic[DATAOBJ_TYPE], Optional[DATAOBJ_TYPE]):
-    pass
-
-@dataclass
-class Cursor(DataObj):
-    a:SubData[str]
-
-def a(a:Cursor):
-    a.a
 
 def copy(item):
     if hasattr(item, "copy"):

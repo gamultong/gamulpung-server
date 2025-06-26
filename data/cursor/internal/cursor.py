@@ -1,13 +1,16 @@
-from data.base import DataObj
+from data.base import DomainObj, add_sub
 from data.base.utils import HaveId, Relation
 
 from data.board import Point, PointRange
 from .color import Color
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts") 
 
 @dataclass
-class Cursor(DataObj, HaveId[str]):
+class Cursor(DomainObj[Unpack[Ts]], HaveId[str]):
     conn_id: str
     position: Point
     pointer: Point | None
@@ -16,15 +19,12 @@ class Cursor(DataObj, HaveId[str]):
     height: int
     revive_at: datetime | None = None
 
-    class Sub(DataObj):
-        watchers:Relation[str]|None = None
-        targets:Relation[str]|None = None
-        
-    sub:Sub|None = None
+    class Watchers(Relation[str]): pass
+    
+    class Targets(Relation[str]): pass
 
     @property
     def id(self) -> str:
-        self.watching_ids
         return self.conn_id
 
     def set_size(self, width: int, height: int):
