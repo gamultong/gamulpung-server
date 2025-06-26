@@ -1,4 +1,4 @@
-from data.base import DomainObj, add_sub
+from data.base import DomainObj
 from data.base.utils import HaveId, Relation
 
 from data.board import Point, PointRange
