@@ -217,7 +217,7 @@ class CursorHandler_TestCase(AsyncTest):
     async def test_add_watcher(self, mock: AsyncMock, watcher_id, target_id):
         self.reset_relationship()
 
-        await CursorHandler.add_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
+        await CursorHandler._add_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
         self.assertCountEqual([watcher_id], await self.watcher_storage.get(target_id))
         self.assertCountEqual([target_id], await self.target_storage.get(watcher_id))
@@ -234,7 +234,7 @@ class CursorHandler_TestCase(AsyncTest):
         self.reset_relationship()
 
         with self.assertRaises(CursorException.NotWatchable):
-            await CursorHandler.add_watcher(watcher=DATASET["A"], target=DATASET["B"])
+            await CursorHandler._add_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
     @cases([
         {"watcher_id": "B", "target_id": "A"},
@@ -245,7 +245,7 @@ class CursorHandler_TestCase(AsyncTest):
         self.assertIn(watcher_id, await self.watcher_storage.get(target_id))
         self.assertIn(target_id, await self.target_storage.get(watcher_id))
 
-        await CursorHandler.remove_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
+        await CursorHandler._remove_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
         self.assertNotIn(watcher_id, await self.watcher_storage.get(target_id))
         self.assertNotIn(target_id, await self.target_storage.get(watcher_id))
@@ -260,7 +260,7 @@ class CursorHandler_TestCase(AsyncTest):
 
     async def test_remove_watcher_not_watching(self):
         with self.assertRaises(CursorException.NotWatching):
-            await CursorHandler.remove_watcher(watcher=DATASET["A"], target=DATASET["B"])
+            await CursorHandler._remove_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
     def reset_relationship(self):
         self.watcher_storage = DictSpace[str, Relation[str]]("watcher", {})

@@ -52,7 +52,7 @@ class CursorHandler:
     )
 
     @classmethod
-    async def add_watcher(cls, watcher: Cursor, target: Cursor):
+    async def _add_watcher(cls, watcher: Cursor, target: Cursor):
         if not watcher.check_in_view(target.position):
             raise CursorException.NotWatchable()
 
@@ -69,7 +69,7 @@ class CursorHandler:
         await cls.watcher_storage.set(target.id, watchers)
 
     @classmethod
-    async def remove_watcher(cls, watcher: Cursor, target: Cursor):
+    async def _remove_watcher(cls, watcher: Cursor, target: Cursor):
         targets = await cls.target_storage.get(watcher.id) or Relation[str](_id=watcher.id)
         watchers = await cls.watcher_storage.get(target.id) or Relation[str](_id=target.id)
 
@@ -182,9 +182,9 @@ class CursorHandler:
 
         to_remove, _, to_add = diff_cursors(old_watchers, current_watchers)
         for other_cursor in to_remove:
-            await cls.remove_watcher(watcher=other_cursor, target=cursor)
+            await cls._remove_watcher(watcher=other_cursor, target=cursor)
         for other_cursor in to_add:
-            await cls.add_watcher(watcher=other_cursor, target=cursor)
+            await cls._add_watcher(watcher=other_cursor, target=cursor)
 
     @classmethod
     async def _justify_targets(cls, cursor: Cursor):
@@ -196,9 +196,9 @@ class CursorHandler:
 
         to_remove, _, to_add = diff_cursors(old_targets, current_targets)
         for other_cursor in to_remove:
-            await cls.remove_watcher(watcher=cursor, target=other_cursor)
+            await cls._remove_watcher(watcher=cursor, target=other_cursor)
         for other_cursor in to_add:
-            await cls.add_watcher(watcher=cursor, target=other_cursor)
+            await cls._add_watcher(watcher=cursor, target=other_cursor)
 
     @classmethod
     async def _update(cls, cursor: Cursor):
