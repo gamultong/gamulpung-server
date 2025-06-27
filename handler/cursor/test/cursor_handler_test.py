@@ -273,26 +273,32 @@ class CursorHandler_TestCase(AsyncTest):
         # A:width 4 -> rm C
         # A:height 7 -> add B
         cur = await self.cursor_storage.get("A")
+        cur.sub[Cursor.Targets] = await self.target_storage.get("A")
 
         changed = await CursorHandler.set_window_size(id="A", width=4, height=7)
 
         self.assertEqual(changed.width, 4)
         self.assertEqual(changed.height, 7)
+        self.assertCountEqual(changed.sub[Cursor.Targets], ["B"])
+        self.assertCountEqual(changed.sub[Cursor.Targets], await self.target_storage.get("A"))
 
-        self.assertCountEqual(["B"], await self.target_storage.get("A"))
         publish_data_event.assert_called_once_with(CursorEvent.WINDOW_SIZE_SET, data=cur)
 
     @patch("publish_data_event")
     async def test_move(self, publish_data_event: AsyncMock):
         mover = await self.cursor_storage.get("B")
+        mover.sub[Cursor.Targets] = await self.target_storage.get("B")
+        mover.sub[Cursor.Watchers] = await self.watcher_storage.get("B")
+
         position = Point(mover.position.x+1, mover.position.y-1)
 
         moved = await CursorHandler.move("B", p=position)
 
         self.assertEqual(moved.position, position)
-
-        self.assertCountEqual(["C"], await self.watcher_storage.get("B"))
-        self.assertCountEqual(["C"], await self.target_storage.get("B"))
+        self.assertCountEqual(moved.sub[Cursor.Targets], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Targets], await self.target_storage.get("B"))
+        self.assertCountEqual(moved.sub[Cursor.Watchers], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Watchers], await self.watcher_storage.get("B"))
 
         publish_data_event.assert_called_once_with(CursorEvent.MOVED, data=mover)
 
