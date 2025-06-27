@@ -282,7 +282,11 @@ class CursorHandler_TestCase(AsyncTest):
         self.assertCountEqual(changed.sub[Cursor.Targets], ["B"])
         self.assertCountEqual(changed.sub[Cursor.Targets], await self.target_storage.get("A"))
 
-        publish_data_event.assert_called_once_with(CursorEvent.WINDOW_SIZE_SET, data=cur)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.WINDOW_SIZE_SET)
+        self.assertEqual(args[1]["data"], cur)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], cur.sub[Cursor.Targets])
 
     @patch("publish_data_event")
     async def test_move(self, publish_data_event: AsyncMock):
@@ -300,7 +304,12 @@ class CursorHandler_TestCase(AsyncTest):
         self.assertCountEqual(moved.sub[Cursor.Watchers], ["C"])
         self.assertCountEqual(moved.sub[Cursor.Watchers], await self.watcher_storage.get("B"))
 
-        publish_data_event.assert_called_once_with(CursorEvent.MOVED, data=mover)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.MOVED)
+        self.assertEqual(args[1]["data"], mover)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], mover.sub[Cursor.Targets])
+        self.assertEqual(args[1]["data"].sub[Cursor.Watchers], mover.sub[Cursor.Watchers])
 
     @patch("publish_data_event")
     async def test_move_not_movable(self, publish_data_event: AsyncMock):
