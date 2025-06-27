@@ -23,7 +23,7 @@ class SubMap(Generic[Unpack[Ts]]):
         self._map[key] = value
 
 @dataclass
-class DomainObj(Generic[Unpack[Ts]]):
+class DomainObj(DataObj, Generic[Unpack[Ts]]):
     def __post_init__(self):
         self.sub = SubMap[Unpack[Ts]]()
         super().__init__()
