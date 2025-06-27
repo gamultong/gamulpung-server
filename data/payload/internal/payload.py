@@ -3,11 +3,13 @@ from typing import Generic, TypeVar
 from data.board import Point
 from data.cursor import Color
 
+from data.base import DataObj
 from dataclasses import dataclass
 from enum import Enum
 
 DATA_TYPE = TypeVar(
-    "DATA_TYPE"
+    "DATA_TYPE",
+    bound=DataObj
 )
 
 
@@ -47,15 +49,18 @@ class ClickType(str, Enum):
     GENERAL_CLICK = "GENERAL_CLICK"
     SPECIAL_CLICK = "SPECIAL_CLICK"
 
+
 @dataclass
 class ScoreBoardElement(Payload):
     rank: int
     score: int
-    before_rank: int|Empty = Empty
+    before_rank: int | Empty = Empty
+
 
 @dataclass
 class ScoreboardStatePayload(Payload):
     data: list[ScoreBoardElement]
+
 
 """
 {
@@ -68,19 +73,40 @@ class ScoreboardStatePayload(Payload):
     ]
 }
 """
+
+
 @dataclass
 class HeaderFrame(Payload):
     event: str
 
+
 @dataclass
 class PayloadFrame(Payload):
     header: ParsablePayload[HeaderFrame]
-    content: ParsablePayload[HeaderFrame]   
+    content: ParsablePayload[HeaderFrame]
+
 
 @dataclass
 class DataPayload(Generic[DATA_TYPE], Payload):
     id: str
-    data: DATA_TYPE|None = None
+    data: DATA_TYPE | None = None
+
+
+@dataclass
+class HeaderFrame(Payload):
+    event: str
+
+
+@dataclass
+class PayloadFrame(Payload):
+    header: ParsablePayload[HeaderFrame]
+    content: ParsablePayload[HeaderFrame]
+
+
+@dataclass
+class DataPayload(Generic[DATA_TYPE], Payload):
+    id: str
+    data: DATA_TYPE | None = None
 
 
 @dataclass
@@ -170,6 +196,7 @@ class ConnClosedPayload(Payload):
 @dataclass
 class CursorQuitPayload(Payload):
     id: str
+
 
 @dataclass
 class CursorPayload(Payload):

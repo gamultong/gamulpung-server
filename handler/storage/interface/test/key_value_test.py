@@ -15,17 +15,23 @@ class KeyValueInterface_TestCase():
         self.init_data = {
             "A": self.data,
         }
-    
+
+    async def test_keys(self: AsyncTestCase):
+        keys = await self.storage.keys()
+
+        got = list(keys)
+        self.assertEqual(got, ["A"])
+
     async def test_get_normal(self: AsyncTestCase):
         expected = ExampleData(1)
         got = await self.storage.get("A")
-        
+
         self.assertEqual(expected, got)
         self.assertIsNot(self.init_data["A"], got)
 
     async def test_get_not_found(self: AsyncTestCase):
         got = await self.storage.get("B")
-        
+
         self.assertIsNone(got)
 
     async def test_set_normal(self: AsyncTestCase):

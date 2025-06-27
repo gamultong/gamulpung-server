@@ -1,249 +1,369 @@
 from data.cursor import Cursor, Color
+from data.board import PointRange
+from data.payload import DataPayload
+from event.message import Message
+
+from datetime import datetime, timedelta
+
 from handler.cursor import (
     CursorHandler,
-    NoMatchingCursorException,
-    AlreadyWatchingException,
-    NotWatchableException,
-    NotWatchingException
+    CursorEvent,
+    CursorException,
 )
-from data.board import Point
-import unittest
+
+from handler.cursor.internal.cursor_handler import diff_cursors
 
 
-class CursorHandlerTestCase(unittest.IsolatedAsyncioTestCase):
+from data.base.utils import Relation
+from data.board import Point, PointRange
+from data.cursor import Cursor
+from unittest import IsolatedAsyncioTestCase as AsyncTest, TestCase
+from unittest.mock import call, AsyncMock, MagicMock, patch as _patch
+
+from tests.utils import cases, PathPatch
+
+from handler.storage.dict import DictSpace, DictStorage
+
+patch = PathPatch("handler.cursor.internal.cursor_handler")
+
+DATASET = {
+    "A": Cursor(
+        conn_id="A",
+        position=Point(-3, 3),
+        pointer=None,
+        height=6,
+        width=6,
+        color=Color.BLUE
+    ),
+    "B": Cursor(
+        conn_id="B",
+        position=Point(-3, -4),
+        pointer=None,
+        height=7,
+        width=7,
+        color=Color.BLUE
+    ),
+    "C": Cursor(
+        conn_id="C",
+        position=Point(2, -1),
+        pointer=None,
+        height=4,
+        width=4,
+        color=Color.BLUE
+    )
+}
+
+TARGET_DATASET = {
+    "A": Relation[str](_id="A", relations=["C"]),
+    "B": Relation[str](_id="B", relations=["A", "C"]),
+    "C": Relation[str](_id="C", relations=[])
+}
+WATCHER_DATASET = {
+    "A": Relation[str](_id="A", relations=["B"]),
+    "B": Relation[str](_id="B", relations=[]),
+    "C": Relation[str](_id="C", relations=["A", "B"]),
+}
+
+EXTRA_CUR = Cursor(
+    conn_id="EX",
+    position=Point(2, -1),
+    pointer=None,
+    height=4,
+    width=4,
+    color=Color.BLUE
+)
+
+
+class CursorHandler_TestCase(AsyncTest):
     def setUp(self):
-        # /docs/example/cursor-location.png
-        CursorHandler.cursor_dict = {
-            "A": Cursor(
-                conn_id="A",
-                position=Point(-3, 3),
-                pointer=None,
-                height=6,
-                width=6,
-                color=Color.BLUE
-            ),
-            "B": Cursor(
-                conn_id="B",
-                position=Point(-3, -4),
-                pointer=None,
-                height=7,
-                width=7,
-                color=Color.BLUE
-            ),
-            "C": Cursor(
-                conn_id="C",
-                position=Point(2, -1),
-                pointer=None,
-                height=4,
-                width=4,
-                color=Color.BLUE
-            )
-        }
+        self.cursor_storage = DictSpace[str, Cursor]("cursor", DATASET)
+        self.target_storage = DictSpace[str, Relation[str]]("watching", TARGET_DATASET)
+        self.watcher_storage = DictSpace[str, Relation[str]]("watcher", WATCHER_DATASET)
 
-    def tearDown(self):
-        CursorHandler.cursor_dict = {}
-        CursorHandler.watchers = {}
-        CursorHandler.watching = {}
+        CursorHandler.cursor_storage = self.cursor_storage
+        CursorHandler.watcher_storage = self.watcher_storage
+        CursorHandler.target_storage = self.target_storage
 
-    def test_create(self):
-        conn_id = "example_conn_id"
-        width, height = 10, 10
-        position = Point(1, 1)
+    @cases([
+        {"id": id, "cur": cur} for id, cur in DATASET.items()
+    ])
+    async def test_get(self, id: str, cur: Cursor):
+        got = await CursorHandler.get(id)
+        self.assertEqual(got, cur)
+        self.assertIsNot(got, cur)
 
-        _ = CursorHandler.create_cursor(conn_id, position, width, height)
+    async def test_get_not_found(self):
+        with self.assertRaises(CursorException.NotFound):
+            await CursorHandler.get("non-user")
 
-        self.assertIn(conn_id, CursorHandler.cursor_dict)
-        self.assertEqual(type(CursorHandler.cursor_dict[conn_id]), Cursor)
-        self.assertEqual(CursorHandler.cursor_dict[conn_id].id, conn_id)
-        self.assertEqual(CursorHandler.cursor_dict[conn_id].width, width)
-        self.assertEqual(CursorHandler.cursor_dict[conn_id].height, height)
-        self.assertEqual(CursorHandler.cursor_dict[conn_id].position, position)
+    @cases([
+        {"range": PointRange(Point(-3, 3), Point(2, -1)), "curs": [DATASET["A"], DATASET["C"]]},
+        {"range": PointRange(Point(-3, 3), Point(-3, 3)), "curs": [DATASET["A"]]},
+        {"range": PointRange(Point(0, 0), Point(0, 0)), "curs": []}
+    ])
+    async def test_get_by_range(self, range: PointRange, curs: list[Cursor]):
+        got = await CursorHandler.get_by_range(range)
+        self.assertCountEqual(got, curs)
 
-    def test_get_cursor(self):
-        a_cur: Cursor | None = CursorHandler.get_cursor("A")
-        d_cur: Cursor | None = CursorHandler.get_cursor("D")
+    async def test_get_by_range_filter(self):
+        range = PointRange(Point(-3, 3), Point(2, -1))
+        # original: [DATASET["A"], DATASET["C"]]
 
-        self.assertIsNotNone(a_cur)
-        self.assertEqual(type(a_cur), Cursor)
-        self.assertEqual(a_cur.id, "A")
-        self.assertEqual(a_cur.position.x, -3)
-        self.assertEqual(a_cur.position.y, 3)
-        self.assertIsNone(a_cur.pointer)
-        self.assertEqual(a_cur.height, 6)
-        self.assertEqual(a_cur.width, 6)
-        self.assertEqual(a_cur.color, Color.BLUE)
+        got = await CursorHandler.get_by_range(range, filters=[lambda c: c.id == "A"])
+        self.assertCountEqual(got, [DATASET["A"]])
 
-        self.assertIsNone(d_cur)
+    @cases([
+        {"point": Point(-3, 3), "curs": [DATASET["A"]]},
+        {"point": Point(2, -1), "curs": [DATASET["C"], EXTRA_CUR]},
+        {"point": Point(0, 0), "curs": []}
+    ])
+    async def test_get_by_point(self, point: Point, curs: list[Cursor]):
+        await self.cursor_storage.set(EXTRA_CUR.id, EXTRA_CUR)
 
-    def test_remove_cursor(self):
-        CursorHandler.remove_cursor("A")
-        self.assertNotIn("A", CursorHandler.cursor_dict)
-        self.assertEqual(len(CursorHandler.cursor_dict), 2)
+        got = await CursorHandler.get_by_point(point)
+        self.assertCountEqual(got, curs, msg=(got, curs))
 
-    def test_exists_range(self):
-        result = CursorHandler.exists_range(start=Point(-3, 3), end=Point(3, -3))
+    @cases([
+        {"range": PointRange(Point(4, -5), Point(5, -6)),
+         "curs": [DATASET["B"], DATASET["C"]]},
+        {"range": PointRange(Point(100, 100), Point(100, 100)),
+         "curs": []},
+    ])
+    async def test_get_by_watching_range(self, range: PointRange, curs: list[Cursor]):
+        got = await CursorHandler.get_by_watching_range(range)
+        self.assertCountEqual(got, curs, msg=(got, curs))
 
-        result = [c.id for c in result]
+    @cases([
+        {"point": Point(0, 0),
+         "curs": [DATASET["A"], DATASET["B"], DATASET["C"]]},
+        {"point":  Point(100, 100),
+         "curs": []},
+    ])
+    async def test_get_by_watching_point(self, point: Point, curs: list[Cursor]):
+        got = await CursorHandler.get_by_watching_point(point)
+        self.assertCountEqual(got, curs, msg=(got, curs))
 
-        self.assertEqual(len(result), 2)
-        self.assertIn("A", result)
-        self.assertIn("C", result)
+    @cases([
+        {"cursor": cur} for _, cur in DATASET.items()
+    ])
+    async def test_get_watchers(self, cursor: Cursor):
+        got = await CursorHandler.get_watchers(cursor)
 
-    def test_exists_range_exclude_id(self):
-        result = CursorHandler.exists_range(start=Point(-3, 3), end=Point(3, -3), exclude_ids=["A"])
+        expected = [DATASET[id] for id in WATCHER_DATASET[cursor.id]]
+        self.assertCountEqual(got, expected)
 
-        result = [c.id for c in result]
+    @cases([
+        {"cursor": cur} for _, cur in DATASET.items()
+    ])
+    async def test_get_targets(self, cursor: Cursor):
+        got = await CursorHandler.get_targets(cursor)
 
-        self.assertEqual(len(result), 1)
-        self.assertIn("C", result)
+        expected = [DATASET[id] for id in TARGET_DATASET[cursor.id]]
+        self.assertCountEqual(got, expected)
 
-    def test_exists_range_exclude_range(self):
-        result = CursorHandler.exists_range(
-            start=Point(-3, 3), end=Point(3, -3),
-            exclude_start=Point(-4, 3), exclude_end=Point(0, 1)
-        )
+    @patch("publish_data_event")
+    async def test_create(self, publish: AsyncMock):
+        template = Cursor.create("D")
+        created = await CursorHandler.create(template)
 
-        result = [c.id for c in result]
+        self.assertEqual(created, template)
 
-        self.assertEqual(len(result), 1)
-        self.assertIn("C", result)
+        fetched = await self.cursor_storage.get("D")
+        self.assertEqual(created, fetched)
 
-    def test_view_includes_point(self):
-        result = CursorHandler.view_includes_point(p=Point(-3, 0))
+        publish.assert_called_once_with(CursorEvent.CREATED, id=template.id)
 
-        result = [c.id for c in result]
+    @patch("publish_data_event")
+    async def test_delete(self, publish: AsyncMock):
+        existing = await self.cursor_storage.get("A")
 
-        self.assertEqual(len(result), 2)
-        self.assertIn("A", result)
-        self.assertIn("B", result)
+        await CursorHandler.delete(existing.id)
 
-    def test_view_includes_point_exclude_id(self):
-        result = CursorHandler.view_includes_point(p=Point(-3, 0), exclude_ids=["A"])
+        publish.assert_called_once_with(CursorEvent.DELETE, data=existing)
 
-        result = [c.id for c in result]
+        fetched = await self.cursor_storage.get("A")
+        self.assertIsNone(fetched)
 
-        self.assertEqual(len(result), 1)
-        self.assertIn("B", result)
+    async def test_private_update(self):
+        cur_a = await self.cursor_storage.get("A")
+        cur_a.pointer = Point(100, 100)
 
-    def test_view_includes_range(self):
-        start = Point(-3, 1)
-        end = Point(-2, 0)
-        result = CursorHandler.view_includes_range(start=start, end=end)
+        await CursorHandler._update(cur_a)
 
-        result = [c.id for c in result]
+        cur_a = await self.cursor_storage.get("A")
+        self.assertEqual(cur_a.pointer, Point(100, 100))
 
-        self.assertEqual(len(result), 3)
-        self.assertIn("A", result)
-        self.assertIn("B", result)
-        self.assertIn("C", result)
+    @patch("datetime")
+    @patch("CursorHandler._update")
+    @patch("publish_data_event")
+    async def test_revive(self, publish_data_event: AsyncMock, update: AsyncMock, _datetime: MagicMock):
+        _datetime.now.return_value = datetime(year=1, month=1, day=1, hour=0, minute=0, second=1)
 
-    def test_view_includes_range__exclude_id(self):
-        start = Point(-3, 1)
-        end = Point(-2, 0)
-        result = CursorHandler.view_includes_range(start=start, end=end, exclude_ids=["A"])
+        cur_a = await self.cursor_storage.get("A")
+        cur_a.revive_at = datetime(year=1, month=1, day=1, hour=0, minute=0, second=0)
+        await self.cursor_storage.set("A", cur_a)
 
-        result = [c.id for c in result]
+        revived = await CursorHandler.revive("A")
+        self.assertIsNone(revived.revive_at)
 
-        self.assertEqual(len(result), 2)
-        self.assertIn("B", result)
-        self.assertIn("C", result)
+        publish_data_event.assert_called_once_with(CursorEvent.REVIVE, data=revived)
+        update.assert_called_once_with(revived)
 
-    def test_add_watcher(self):
-        CursorHandler.add_watcher(
-            watcher=CursorHandler.cursor_dict["B"],
-            watching=CursorHandler.cursor_dict["A"]
-        )
+    @cases([
+        {"watcher_id": "B", "target_id": "A"},
+        {"watcher_id": "B", "target_id": "C"}
+    ])
+    @patch("publish_data_event")
+    async def test_add_watcher(self, mock: AsyncMock, watcher_id, target_id):
+        self.reset_relationship()
 
-        self.assertIn("A", CursorHandler.watchers)
-        self.assertIn("B", CursorHandler.watchers["A"])
+        await CursorHandler._add_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
-        self.assertIn("B", CursorHandler.watching)
-        self.assertIn("A", CursorHandler.watching["B"])
+        self.assertCountEqual([watcher_id], await self.watcher_storage.get(target_id))
+        self.assertCountEqual([target_id], await self.target_storage.get(watcher_id))
 
-    def test_add_watcher_not_watchable(self):
-        with self.assertRaises(NotWatchableException):
-            CursorHandler.add_watcher(
-                watcher=CursorHandler.cursor_dict["C"],
-                watching=CursorHandler.cursor_dict["A"]
-            )
+        # mock.assert_has_calls(
+        #     calls=[
+        #         call(CursorEvent.WATCHER_ADDED, id=target_id),
+        #         call(CursorEvent.TARGET_ADDED, id=watcher_id),
+        #     ],
+        #     any_order=True,
+        # )
 
-    def test_add_watcher_already_watching(self):
-        CursorHandler.add_watcher(
-            watcher=CursorHandler.cursor_dict["B"],
-            watching=CursorHandler.cursor_dict["A"]
-        )
+    async def test_add_watcher_not_target(self):
+        self.reset_relationship()
 
-        with self.assertRaises(AlreadyWatchingException):
-            CursorHandler.add_watcher(
-                watcher=CursorHandler.cursor_dict["B"],
-                watching=CursorHandler.cursor_dict["A"]
-            )
+        with self.assertRaises(CursorException.NotWatchable):
+            await CursorHandler._add_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
-    def test_add_watcher_no_matching_cursor(self):
-        with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.add_watcher(
-                watcher=Cursor.create("D"),
-                watching=CursorHandler.cursor_dict["A"]
-            )
+    @cases([
+        {"watcher_id": "B", "target_id": "A"},
+        {"watcher_id": "B", "target_id": "C"}
+    ])
+    @patch("publish_data_event")
+    async def test_remove_watcher(self, mock: AsyncMock, watcher_id, target_id):
+        self.assertIn(watcher_id, await self.watcher_storage.get(target_id))
+        self.assertIn(target_id, await self.target_storage.get(watcher_id))
 
-    def test_remove_watcher(self):
-        CursorHandler.watchers["A"] = ["B"]
-        CursorHandler.watching["B"] = ["A", None]
+        await CursorHandler._remove_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
-        CursorHandler.remove_watcher(
-            watcher=CursorHandler.cursor_dict["B"],
-            watching=CursorHandler.cursor_dict["A"]
-        )
+        self.assertNotIn(watcher_id, await self.watcher_storage.get(target_id))
+        self.assertNotIn(target_id, await self.target_storage.get(watcher_id))
 
-        self.assertNotIn("A", CursorHandler.watching["B"])
-        self.assertNotIn("A", CursorHandler.watchers)
+        # mock.assert_has_calls(
+        #     calls=[
+        #         call(CursorEvent.WATCHER_REMOVED, id=target_id),
+        #         call(CursorEvent.TARGET_REMOVED, id=watcher_id),
+        #     ],
+        #     any_order=True,
+        # )
 
-    def test_remove_watcher_not_watching(self):
-        with self.assertRaises(NotWatchingException):
-            CursorHandler.remove_watcher(
-                watcher=CursorHandler.cursor_dict["B"],
-                watching=CursorHandler.cursor_dict["A"]
-            )
+    async def test_remove_watcher_not_watching(self):
+        with self.assertRaises(CursorException.NotWatching):
+            await CursorHandler._remove_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
-    def test_remove_watcher_no_matching_cursor(self):
-        with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.remove_watcher(
-                watcher=Cursor.create("D"),
-                watching=CursorHandler.cursor_dict["A"]
-            )
+    def reset_relationship(self):
+        self.watcher_storage = DictSpace[str, Relation[str]]("watcher", {})
+        CursorHandler.watcher_storage = self.watcher_storage
+        self.target_storage = DictSpace[str, Relation[str]]("target", {})
+        CursorHandler.target_storage = self.target_storage
 
-    def test_get_watchers(self):
-        CursorHandler.add_watcher(
-            watcher=CursorHandler.cursor_dict["B"],
-            watching=CursorHandler.cursor_dict["A"]
-        )
+    @patch("publish_data_event")
+    async def test_set_window_size(self, publish_data_event: AsyncMock):
+        # A:width 4 -> rm C
+        # A:height 7 -> add B
+        cur = await self.cursor_storage.get("A")
+        cur.sub[Cursor.Targets] = await self.target_storage.get("A")
 
-        a_watchers = CursorHandler.get_watchers_id("A")
-        b_watchers = CursorHandler.get_watchers_id("B")
+        changed = await CursorHandler.set_window_size(id="A", width=4, height=7)
 
-        self.assertEqual(len(a_watchers), 1)
-        self.assertEqual(a_watchers[0], "B")
+        self.assertEqual(changed.width, 4)
+        self.assertEqual(changed.height, 7)
+        self.assertCountEqual(changed.sub[Cursor.Targets], ["B"])
+        self.assertCountEqual(changed.sub[Cursor.Targets], await self.target_storage.get("A"))
 
-        self.assertEqual(len(b_watchers), 0)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.WINDOW_SIZE_SET)
+        self.assertEqual(args[1]["data"], cur)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], cur.sub[Cursor.Targets])
 
-    def test_get_watchers_no_matching_cursor(self):
-        with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.get_watchers_id("D")
+    @patch("publish_data_event")
+    async def test_move(self, publish_data_event: AsyncMock):
+        mover = await self.cursor_storage.get("B")
+        mover.sub[Cursor.Targets] = await self.target_storage.get("B")
+        mover.sub[Cursor.Watchers] = await self.watcher_storage.get("B")
 
-    def test_get_watching(self):
-        CursorHandler.add_watcher(
-            watcher=CursorHandler.cursor_dict["B"],
-            watching=CursorHandler.cursor_dict["A"]
-        )
+        position = Point(mover.position.x+1, mover.position.y-1)
 
-        a_watching = CursorHandler.get_watching_id("A")
-        b_watching = CursorHandler.get_watching_id("B")
+        moved = await CursorHandler.move("B", p=position)
 
-        self.assertEqual(b_watching[0], "A")
-        self.assertEqual(len(b_watching), 1)
+        self.assertEqual(moved.position, position)
+        self.assertCountEqual(moved.sub[Cursor.Targets], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Targets], await self.target_storage.get("B"))
+        self.assertCountEqual(moved.sub[Cursor.Watchers], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Watchers], await self.watcher_storage.get("B"))
 
-        self.assertEqual(len(a_watching), 0)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.MOVED)
+        self.assertEqual(args[1]["data"], mover)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], mover.sub[Cursor.Targets])
+        self.assertEqual(args[1]["data"].sub[Cursor.Watchers], mover.sub[Cursor.Watchers])
 
-    def test_get_watching_no_matching_cursor(self):
-        with self.assertRaises(NoMatchingCursorException):
-            CursorHandler.get_watching_id("D")
+    @patch("publish_data_event")
+    async def test_move_not_movable(self, publish_data_event: AsyncMock):
+        mover = await self.cursor_storage.get("B")
+        position = Point(mover.position.x+100, mover.position.y)  # 100을 넘을 일은 아마 없을걸
+
+        with self.assertRaises(CursorException.NotMovable):
+            await CursorHandler.move("B", p=position)
+
+    @patch("publish_data_event")
+    async def test_set_pointer(self, publish_data_event: AsyncMock):
+        cur = await self.cursor_storage.get("A")
+        pointer = Point(cur.position.x+1, cur.position.y-1)
+
+        changed = await CursorHandler.set_pointer("A", p=pointer)
+
+        self.assertEqual(changed.pointer, pointer)
+
+        publish_data_event.assert_called_once_with(CursorEvent.POINTING, data=cur)
+
+    @patch("publish_data_event")
+    async def test_set_pointer(self, publish_data_event: AsyncMock):
+        mover = await self.cursor_storage.get("A")
+        pointer = mover.view_range.top_left.copy()
+        pointer = Point(pointer.x-1, pointer.y)  # 벗어남
+
+        with self.assertRaises(CursorException.NotPointable):
+            await CursorHandler.set_pointer("A", p=pointer)
+
+    @patch("datetime")
+    @patch("CursorHandler._update")
+    @patch("publish_data_event")
+    async def test_kill(self, publish_data_event: AsyncMock, update: AsyncMock, _datetime: MagicMock):
+        now = datetime(year=1, month=1, day=1, hour=0, minute=0, second=0)
+        _datetime.now.return_value = now
+
+        cur = await self.cursor_storage.get("A")
+
+        duration = timedelta(seconds=60)
+
+        dead = await CursorHandler.kill("A", duration)
+        self.assertEqual(dead.revive_at, now+duration)
+
+        publish_data_event.assert_called_once_with(CursorEvent.DEATH, data=cur)
+        update.assert_called_once_with(cursor=dead)
+
+
+class DiffCursor_TestCase(TestCase):
+    def test_diff_cursors(self):
+        curs = [Cursor.create(f"{i}") for i in range(4)]
+        front = curs[:3]
+        back = curs[2:]
+
+        front_only, both, back_only = diff_cursors(front, back)
+        self.assertEqual(front_only, curs[:2])
+        self.assertEqual(both, curs[2:3])
+        self.assertEqual(back_only, curs[3:])

@@ -9,7 +9,7 @@ from handler.score import ScoreHandler
 
 from data.cursor import Cursor
 
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from .utils import multicast, unwatch, get_watchers
 

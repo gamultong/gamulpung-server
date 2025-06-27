@@ -27,6 +27,7 @@ async def multicast(target_conns: list[str], message: Message):
         )
     )
 
+
 async def broadcast(message: Message):
     await EventBroker.publish(
         message=Message(
@@ -38,6 +39,7 @@ async def broadcast(message: Message):
         )
     )
 
+
 async def fetch_tiles(start: Point, end: Point):
     tiles = await BoardHandler.fetch(start, end)
     tiles.hide_info()
@@ -48,13 +50,15 @@ async def fetch_tiles(start: Point, end: Point):
 def watch(watchers: list[Cursor], watchings: list[Cursor]):
     for watcher in watchers:
         for watching in watchings:
-            CursorHandler.add_watcher(watcher=watcher, watching=watching)
+            # 어차피 버릴것
+            CursorHandler._add_watcher(watcher=watcher, watching=watching)
 
 
 def unwatch(watchers: list[Cursor], watchings: list[Cursor]):
     for watcher in watchers:
         for watching in watchings:
-            CursorHandler.remove_watcher(watcher=watcher, watching=watching)
+            # 어차피 버릴것
+            CursorHandler._remove_watcher(watcher=watcher, watching=watching)
 
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):
@@ -65,7 +69,7 @@ async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor
 
     for cursor in cursors:
         try:
-            score = await ScoreHandler.get_by_id(cursor.id)
+            score = await ScoreHandler.get(cursor.id)
         except ScoreNotFoundException:
             continue
 

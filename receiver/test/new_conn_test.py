@@ -6,7 +6,7 @@ from data.payload import (
     NewConnPayload, EventCollection,
     MyCursorPayload, TilesPayload
 )
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 from receiver.internal.new_conn import (
     NewConnReceiver,

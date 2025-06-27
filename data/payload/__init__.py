@@ -24,7 +24,5 @@ from .internal.payload import (
     SetViewSizePayload,
     SetFlagPayload,
     OpenTilePayload,
-    EventEnum,
-    ScoreBoardElement,
-    ScoreboardStatePayload
+    EventEnum
 )

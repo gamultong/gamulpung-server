@@ -5,7 +5,7 @@ from data.board import Section
 from receiver import *
 from event.message import Message
 from data.payload import EventCollection, ErrorPayload
-from config import VIEW_SIZE_LIMIT
+from config import WINDOW_SIZE_LIMIT
 
 app = FastAPI()
 
@@ -18,7 +18,7 @@ async def session(ws: WebSocket):
 
         if \
                 view_width <= 0 or view_height <= 0 or \
-                view_width > VIEW_SIZE_LIMIT or view_height > VIEW_SIZE_LIMIT:
+                view_width > WINDOW_SIZE_LIMIT or view_height > WINDOW_SIZE_LIMIT:
             raise Exception({"msg": "don't play with view size"})
 
     except KeyError as e:
