@@ -52,7 +52,7 @@ class CursorHandler:
     )
 
     @classmethod
-    async def add_watcher(cls, watcher: Cursor, target: Cursor):
+    async def _add_watcher(cls, watcher: Cursor, target: Cursor):
         if not watcher.check_in_view(target.position):
             raise CursorException.NotWatchable()
 
@@ -69,7 +69,7 @@ class CursorHandler:
         await cls.watcher_storage.set(target.id, watchers)
 
     @classmethod
-    async def remove_watcher(cls, watcher: Cursor, target: Cursor):
+    async def _remove_watcher(cls, watcher: Cursor, target: Cursor):
         targets = await cls.target_storage.get(watcher.id) or Relation[str](_id=watcher.id)
         watchers = await cls.watcher_storage.get(target.id) or Relation[str](_id=target.id)
 
@@ -109,9 +109,10 @@ class CursorHandler:
 
         cursor.width, cursor.height = width, height
 
-        await cls._justify_targets(cursor=cursor)
-
         await cls._update(cursor=cursor)
+
+        old_t, cur_t = await cls._justify_targets(cursor=cursor)
+        prev_cur, cursor = set_targets(prev_cur, old_t), set_targets(cursor, cur_t)
 
         await publish_data_event(CursorEvent.WINDOW_SIZE_SET, data=prev_cur)
 
@@ -128,10 +129,13 @@ class CursorHandler:
 
         cursor.position = p
 
-        await cls._justify_targets(cursor)
-        await cls._justify_watchers(cursor)
-
         await cls._update(cursor=cursor)
+
+        old_t, cur_t = await cls._justify_targets(cursor)
+        prev_cur, cursor = set_targets(prev_cur, old_t), set_targets(cursor, cur_t)
+
+        old_w, cur_w = await cls._justify_watchers(cursor)
+        prev_cur, cursor = set_watchers(prev_cur, old_w), set_watchers(cursor, cur_w)
 
         await publish_data_event(CursorEvent.MOVED, data=prev_cur)
 
@@ -173,7 +177,7 @@ class CursorHandler:
         return cursor
 
     @classmethod
-    async def _justify_watchers(cls, cursor: Cursor):
+    async def _justify_watchers(cls, cursor: Cursor) -> tuple[list[Cursor], list[Cursor]]:
         old_watchers = await cls.get_watchers(cursor=cursor)
         current_watchers = await cls.get_by_watching_point(
             point=cursor.position,
@@ -182,12 +186,14 @@ class CursorHandler:
 
         to_remove, _, to_add = diff_cursors(old_watchers, current_watchers)
         for other_cursor in to_remove:
-            await cls.remove_watcher(watcher=other_cursor, target=cursor)
+            await cls._remove_watcher(watcher=other_cursor, target=cursor)
         for other_cursor in to_add:
-            await cls.add_watcher(watcher=other_cursor, target=cursor)
+            await cls._add_watcher(watcher=other_cursor, target=cursor)
+
+        return old_watchers, current_watchers
 
     @classmethod
-    async def _justify_targets(cls, cursor: Cursor):
+    async def _justify_targets(cls, cursor: Cursor) -> tuple[list[Cursor], list[Cursor]]:
         old_targets = await cls.get_targets(cursor=cursor)
         current_targets = await cls.get_by_range(
             range=cursor.view_range,
@@ -196,9 +202,11 @@ class CursorHandler:
 
         to_remove, _, to_add = diff_cursors(old_targets, current_targets)
         for other_cursor in to_remove:
-            await cls.remove_watcher(watcher=cursor, target=other_cursor)
+            await cls._remove_watcher(watcher=cursor, target=other_cursor)
         for other_cursor in to_add:
-            await cls.add_watcher(watcher=cursor, target=other_cursor)
+            await cls._add_watcher(watcher=cursor, target=other_cursor)
+
+        return old_targets, current_targets
 
     @classmethod
     async def _update(cls, cursor: Cursor):
@@ -289,6 +297,16 @@ class CursorHandler:
         ids = await cls.target_storage.get(cursor.id)
 
         return [await cls.get(id) for id in ids]
+
+
+def set_watchers(cursor: Cursor, watchers: list[Cursor]) -> Cursor[Cursor.Watchers]:
+    cursor.sub[Cursor.Watchers] = Relation(_id=cursor.id, relations=[c.id for c in watchers])
+    return cursor
+
+
+def set_targets(cursor: Cursor, targets: list[Cursor]) -> Cursor[Cursor.Targets]:
+    cursor.sub[Cursor.Targets] = Relation(_id=cursor.id, relations=[c.id for c in targets])
+    return cursor
 
 
 # return -> [a_only, both, b_only]

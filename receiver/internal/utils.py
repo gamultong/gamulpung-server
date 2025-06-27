@@ -50,13 +50,15 @@ async def fetch_tiles(start: Point, end: Point):
 def watch(watchers: list[Cursor], watchings: list[Cursor]):
     for watcher in watchers:
         for watching in watchings:
-            CursorHandler.add_watcher(watcher=watcher, watching=watching)
+            # 어차피 버릴것
+            CursorHandler._add_watcher(watcher=watcher, watching=watching)
 
 
 def unwatch(watchers: list[Cursor], watchings: list[Cursor]):
     for watcher in watchers:
         for watching in watchings:
-            CursorHandler.remove_watcher(watcher=watcher, watching=watching)
+            # 어차피 버릴것
+            CursorHandler._remove_watcher(watcher=watcher, watching=watching)
 
 
 async def publish_new_cursors(target_cursors: list[Cursor], cursors: list[Cursor]):

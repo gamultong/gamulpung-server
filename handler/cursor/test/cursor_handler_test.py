@@ -217,7 +217,7 @@ class CursorHandler_TestCase(AsyncTest):
     async def test_add_watcher(self, mock: AsyncMock, watcher_id, target_id):
         self.reset_relationship()
 
-        await CursorHandler.add_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
+        await CursorHandler._add_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
         self.assertCountEqual([watcher_id], await self.watcher_storage.get(target_id))
         self.assertCountEqual([target_id], await self.target_storage.get(watcher_id))
@@ -234,7 +234,7 @@ class CursorHandler_TestCase(AsyncTest):
         self.reset_relationship()
 
         with self.assertRaises(CursorException.NotWatchable):
-            await CursorHandler.add_watcher(watcher=DATASET["A"], target=DATASET["B"])
+            await CursorHandler._add_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
     @cases([
         {"watcher_id": "B", "target_id": "A"},
@@ -245,7 +245,7 @@ class CursorHandler_TestCase(AsyncTest):
         self.assertIn(watcher_id, await self.watcher_storage.get(target_id))
         self.assertIn(target_id, await self.target_storage.get(watcher_id))
 
-        await CursorHandler.remove_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
+        await CursorHandler._remove_watcher(watcher=DATASET[watcher_id], target=DATASET[target_id])
 
         self.assertNotIn(watcher_id, await self.watcher_storage.get(target_id))
         self.assertNotIn(target_id, await self.target_storage.get(watcher_id))
@@ -260,7 +260,7 @@ class CursorHandler_TestCase(AsyncTest):
 
     async def test_remove_watcher_not_watching(self):
         with self.assertRaises(CursorException.NotWatching):
-            await CursorHandler.remove_watcher(watcher=DATASET["A"], target=DATASET["B"])
+            await CursorHandler._remove_watcher(watcher=DATASET["A"], target=DATASET["B"])
 
     def reset_relationship(self):
         self.watcher_storage = DictSpace[str, Relation[str]]("watcher", {})
@@ -273,28 +273,43 @@ class CursorHandler_TestCase(AsyncTest):
         # A:width 4 -> rm C
         # A:height 7 -> add B
         cur = await self.cursor_storage.get("A")
+        cur.sub[Cursor.Targets] = await self.target_storage.get("A")
 
         changed = await CursorHandler.set_window_size(id="A", width=4, height=7)
 
         self.assertEqual(changed.width, 4)
         self.assertEqual(changed.height, 7)
+        self.assertCountEqual(changed.sub[Cursor.Targets], ["B"])
+        self.assertCountEqual(changed.sub[Cursor.Targets], await self.target_storage.get("A"))
 
-        self.assertCountEqual(["B"], await self.target_storage.get("A"))
-        publish_data_event.assert_called_once_with(CursorEvent.WINDOW_SIZE_SET, data=cur)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.WINDOW_SIZE_SET)
+        self.assertEqual(args[1]["data"], cur)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], cur.sub[Cursor.Targets])
 
     @patch("publish_data_event")
     async def test_move(self, publish_data_event: AsyncMock):
         mover = await self.cursor_storage.get("B")
+        mover.sub[Cursor.Targets] = await self.target_storage.get("B")
+        mover.sub[Cursor.Watchers] = await self.watcher_storage.get("B")
+
         position = Point(mover.position.x+1, mover.position.y-1)
 
         moved = await CursorHandler.move("B", p=position)
 
         self.assertEqual(moved.position, position)
+        self.assertCountEqual(moved.sub[Cursor.Targets], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Targets], await self.target_storage.get("B"))
+        self.assertCountEqual(moved.sub[Cursor.Watchers], ["C"])
+        self.assertCountEqual(moved.sub[Cursor.Watchers], await self.watcher_storage.get("B"))
 
-        self.assertCountEqual(["C"], await self.watcher_storage.get("B"))
-        self.assertCountEqual(["C"], await self.target_storage.get("B"))
-
-        publish_data_event.assert_called_once_with(CursorEvent.MOVED, data=mover)
+        publish_data_event.assert_called_once()
+        args = publish_data_event.call_args
+        self.assertEqual(args[0][0], CursorEvent.MOVED)
+        self.assertEqual(args[1]["data"], mover)
+        self.assertEqual(args[1]["data"].sub[Cursor.Targets], mover.sub[Cursor.Targets])
+        self.assertEqual(args[1]["data"].sub[Cursor.Watchers], mover.sub[Cursor.Watchers])
 
     @patch("publish_data_event")
     async def test_move_not_movable(self, publish_data_event: AsyncMock):
