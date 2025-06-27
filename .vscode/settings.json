@@ -7,5 +7,6 @@
         "editor.formatOnSave": true
     },
     "autopep8.args": ["--max-line-length=200"],
-    "explorer.compactFolders": false
+    "explorer.compactFolders": false,
+    "python.analysis.typeCheckingMode": "basic"
 }
