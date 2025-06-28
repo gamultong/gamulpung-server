@@ -2,14 +2,9 @@ from config import SCOREBOARD_SIZE
 
 from data.cursor import Cursor
 from data.score import Score
-from data.payload import (
-    EventCollection,
-    DataPayload
-)
+from data.conn.event import ServerEvent
 
-from data.conn.event import (
-    ServerEvent
-)
+from data.payload import DataPayload
 
 from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException
 from handler.cursor import CursorHandler
@@ -39,7 +34,7 @@ class ScoreReceiver():
     @EventBroker.add_receiver(ScoreEvent.CREATED)
     @staticmethod
     async def send_initial_scoreboard(message: Message[DataPayload[Score]]):
-        cursor = CursorHandler.get_cursor(message.payload.id)
+        cursor = await CursorHandler.get(message.payload.id)
 
         await deliver_whole_scoreboard(cursor)
 
@@ -67,28 +62,26 @@ async def deliver_whole_scoreboard(cursor: Cursor):
 
 
 def create_scoreboard_state_message(scores: list[Score]):
+    event = ServerEvent.ScoreboardState
+
     score_elements = [
-        ServerEvent.ScoreboardState.Elem(rank=score.rank, score=score.value, before_rank=Empty)
+        event.Elem(rank=score.rank, score=score.value, before_rank=Empty)
         for score in scores
     ]
 
-    payload = ServerEvent.ScoreboardState(scores=score_elements)
-    return Message(
-        event=EventCollection.SCOREBOARD_STATE,
-        payload=payload
-    )
+    return event(scores=score_elements)
 
 
 async def multicast_scoreboard_state(target_conns: list[Cursor], scores: list[Score]):
     await multicast(
         target_conns=[c.id for c in target_conns],
-        message=create_scoreboard_state_message(scores)
+        event=create_scoreboard_state_message(scores)
     )
 
 
 async def broadcast_scoreboard_state(scores: list[Score]):
     await broadcast(
-        message=create_scoreboard_state_message(scores)
+        event=create_scoreboard_state_message(scores)
     )
 
 

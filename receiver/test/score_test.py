@@ -12,23 +12,19 @@
 from event.broker import EventBroker
 from event.message import Message
 from event.payload import Empty
-from data.payload import (
-    EventCollection,
-    EventCollection, DataPayload
-)
 
 from data.conn.event import ServerEvent
 
-from data.board import Point, Tile, Tiles
-from data.cursor import Cursor, Color
+from data.cursor import Cursor
 from data.score import Score
 
+from data.payload import DataPayload
 
 from handler.score import ScoreEvent
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
-from .test_tools import get_cur_set
+from .test_tools import get_cur_set, assertMulticast
 from tests.utils import PathPatch, cases, override, MockSet, Wrapper as Wp
 from config import SCOREBOARD_SIZE
 
@@ -161,27 +157,18 @@ class MulticastScoreboardState_TestCase(AsyncTestCase):
             scores=[score]
         )
 
-        multicast.assert_called_once_with(
-            target_conns=[cursor.id],
-            message=Message(
-                event=EventCollection.SCOREBOARD_STATE,
-                payload=ServerEvent.ScoreboardState(
-                    scores=[ServerEvent.ScoreboardState.Elem(
-                        rank=score.rank,
-                        score=score.value,
-                        before_rank=Empty
-                    )]
-                )
-            )
+        multicast.assert_called_once()
+
+        event = ServerEvent.ScoreboardState(
+            scores=[ServerEvent.ScoreboardState.Elem(
+                rank=score.rank,
+                score=score.value,
+                before_rank=Empty
+            )]
         )
+        assertMulticast(self, multicast.mock_calls[0], target_conns=[cursor.id], event=event)
 
 
-# def cal(old, new):
-#     return (1, 2)
-
-
-# scores = fetch_scoreboard(*get_rank_changed_range(None, None))
-# await broadcast_scoreboard_state(scores)
 cursor_a = Cursor.create("A")
 scoreboard = SCOREBOARD_STUB
 changed_range = (1, 2)
@@ -236,7 +223,7 @@ class NotifiyScoreChanged_TestCase(AsyncTestCase):
 class SendInitialScoreBoard_MockSet(MockSet):
     __path__ = MOCK_PATH
 
-    get_cursor: Wp[MagicMock] = override("CursorHandler.get_cursor", return_value=cursor_a)
+    get_cursor: Wp[AsyncMock] = override("CursorHandler.get", return_value=cursor_a)
     deliver_whole_scoreboard: Wp[MagicMock] = override("deliver_whole_scoreboard")
 
 

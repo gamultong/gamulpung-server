@@ -29,6 +29,6 @@ if __name__ == "__main__":
     from handler.storage.list.array.test import *
 
     # receiver
-    # from receiver.test import *
+    from receiver.test import *
 
     unittest.main(verbosity=1)
