@@ -2,7 +2,7 @@ from typing import get_args, get_origin
 from data.base import DataObj
 
 from dataclasses import dataclass
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Any
 
 
 class Event(DataObj):
@@ -53,7 +53,7 @@ def get_anno_items(data_type: type[DataObj]):
         yield key, data_type.__annotations__[key]
 
 
-def parsing_type(field_type: type):
+def parsing_type(field_type: type) -> tuple[Any, Type[DataObj] | None]:
     origin_type = get_origin(field_type)
     if origin_type is None:
         return field_type, None
@@ -63,7 +63,7 @@ def parsing_type(field_type: type):
     return origin_type, args_type[0]
 
 
-def data_obj_parsing(data: dict, data_type: type[DataObj]):
+def data_obj_parsing(data: dict, data_type: Type[DataObj]):
     param = {}
     for key, field_type in get_anno_items(data_type):
 
@@ -82,7 +82,9 @@ def data_obj_parsing(data: dict, data_type: type[DataObj]):
                 # ex) str
                 param[key] = field_data
         else:
-            def func(fd): return data_obj_parsing(fd, arg_type)
+            def func(fd):
+                assert arg_type is not None
+                return data_obj_parsing(fd, arg_type)
             assert origin_type is list
             if issubclass(arg_type, DataObj):
                 if origin_type is list:
