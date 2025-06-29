@@ -57,29 +57,32 @@ async def deliver_whole_scoreboard(cursor: Cursor):
     scores = await ScoreHandler.get_by_rank(start=1, end=length)
 
     await multicast_scoreboard_state(
-        target_conns=[cursor], scores=scores
+        target_conns=(cursor, ), scores=scores
     )
 
 
-def create_scoreboard_state_message(scores: list[Score]):
+def create_scoreboard_state_message(scores: tuple[Score]):
     event = ServerEvent.ScoreboardState
 
     score_elements = [
         event.Elem(rank=score.rank, score=score.value, before_rank=Empty)
         for score in scores
+        if score.rank is not None
     ]
 
-    return event(scores=score_elements)
+    assert len(score_elements) == len(scores)
+
+    return ServerEvent.ScoreboardState(scores=score_elements)
 
 
-async def multicast_scoreboard_state(target_conns: list[Cursor], scores: list[Score]):
+async def multicast_scoreboard_state(target_conns: tuple[Cursor], scores: tuple[Score]):
     await multicast(
         target_conns=[c.id for c in target_conns],
         event=create_scoreboard_state_message(scores)
     )
 
 
-async def broadcast_scoreboard_state(scores: list[Score]):
+async def broadcast_scoreboard_state(scores: tuple[Score]):
     await broadcast(
         event=create_scoreboard_state_message(scores)
     )
@@ -87,13 +90,15 @@ async def broadcast_scoreboard_state(scores: list[Score]):
 
 async def fetch_scoreboard(start, end):
     if start > SCOREBOARD_SIZE:
-        return []
+        return tuple()
     end = min(end, SCOREBOARD_SIZE)
     return await ScoreHandler.get_by_rank(start, end)
 
 
 async def get_rank_changed_range(old: Score | None, new: Score | None):
     if old is not None and new is not None:
+        assert old.rank is not None
+        assert new.rank is not None
         return sorted((old.rank, new.rank))
 
     length = await ScoreHandler.length()
@@ -102,6 +107,7 @@ async def get_rank_changed_range(old: Score | None, new: Score | None):
         if score is None:
             return length
 
+        assert score.rank is not None
         return score.rank
 
     start = rank_or_length(old)
