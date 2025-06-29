@@ -1,14 +1,5 @@
 from typing import Generic, TypeVar
 from event.payload import Payload, Empty
-from data.payload import (
-    EventCollection,
-    FetchTilesPayload,
-    TilesPayload,
-    SendChatPayload,
-    PointingPayload,
-    MovingPayload,
-    SetViewSizePayload
-)
 from .exceptions import InvalidEventTypeException
 
 import json
@@ -19,14 +10,6 @@ EVENT_TYPE = TypeVar(
     bound=Payload
 )
 
-DECODABLE_PAYLOAD_DICT: dict[str, Payload] = {
-    EventCollection.FETCH_TILES   : FetchTilesPayload,
-    EventCollection.TILES         : TilesPayload,
-    EventCollection.POINTING      : PointingPayload,
-    EventCollection.MOVING        : MovingPayload,
-    EventCollection.SET_VIEW_SIZE : SetViewSizePayload,
-    EventCollection.SEND_CHAT     : SendChatPayload
-}
 
 @dataclass
 class Message(Generic[EVENT_TYPE]):
@@ -43,7 +26,7 @@ class Message(Generic[EVENT_TYPE]):
         self.event = event
         self.payload = payload
         self.header = header
-    
+
     def to_str(self, del_header: bool = True):
         data = self
         if del_header:
@@ -52,9 +35,9 @@ class Message(Generic[EVENT_TYPE]):
 
         def __parse(obj):
             return {
-                key : item
+                key: item
                 for key in obj.__dict__
-                if (item:=obj.__dict__[key]) is not Empty
+                if (item := obj.__dict__[key]) is not Empty
             }
 
         return json.dumps(
@@ -81,7 +64,8 @@ def decode_data(event: str, data: dict):
     """
     data를 Payload로 decode
     """
-    if not event in DECODABLE_PAYLOAD_DICT:
-        raise InvalidEventTypeException(event)
+    # if not event in DECODABLE_PAYLOAD_DICT:
+    #     raise InvalidEventTypeException(event)
 
-    return DECODABLE_PAYLOAD_DICT[event]._from_dict(data)
+    # return DECODABLE_PAYLOAD_DICT[event]._from_dict(data)
+    raise "not implemented"
