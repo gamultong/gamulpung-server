@@ -1,8 +1,15 @@
 from data.board import Point, PointRange, Tile, Tiles
 from data.cursor import Cursor, Color
-
 from data.conn.event import ServerEvent
+from data.payload import DataPayload
+from data.score import Score
 
+from event.message import Message
+
+from receiver import CursorReceiver
+from receiver.internal.cursor import validate
+
+from handler.cursor import CursorEvent
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from tests.utils import PathPatch, cases, override, MockSet, Wrapper as Wp
 from unittest.mock import AsyncMock, MagicMock, call
@@ -58,17 +65,28 @@ new_cur_1 = EXAMPLE_OLD_CURSOR.copy()
 new_cur_1.conn_id = "new_1"
 new_cur_1.position = Point(2, 2)
 
-OLD_TARGETS = Cursor.Targets(
+OLD_TARGETS_R = Cursor.Targets(
     _id=EXAMPLE_OLD_CURSOR.id,
     relations=["old_1", "old_2"]
 )
 
-EXAMPLE_OLD_CURSOR.sub[Cursor.Targets] = OLD_TARGETS
+OLD_TARGETS = [
+    old_cur_1,
+    old_cur_2
+]
 
-NEW_TARGETS = Cursor.Targets(
+EXAMPLE_OLD_CURSOR.sub[Cursor.Targets] = OLD_TARGETS_R
+
+NEW_TARGETS_R = Cursor.Targets(
     _id=EXAMPLE_OLD_CURSOR.id,
     relations=["old_1", "old_2", "new_1"]
 )
+
+NEW_TARGETS = [
+    old_cur_1,
+    old_cur_2,
+    new_cur_1
+]
 
 EXAMPLE_NEW_CURSOR = EXAMPLE_OLD_CURSOR.copy()
 EXAMPLE_NEW_CURSOR.width = 2
@@ -137,11 +155,17 @@ class Validate_TestCase(TestCase):
 
 
 class TilesStateEvent_TestCase(AsyncTestCase):
-    @patch("BoardHandler.fetch", return_value=EXAMPLE_TILES)
-    @patch("CursorHandler.get", side_effect=get_cursor_stub)
     @patch("multicast")
-    async def test_normal(self, fetch: AsyncMock, get_cursor: AsyncMock, multicast: AsyncMock):
-        fetch.return_value = EXAMPLE_TILES
+    @patch("CursorHandler.get_targets", return_value=[])
+    @patch("CursorHandler.get", side_effect=get_cursor_stub)
+    @patch("BoardHandler.fetch", return_value=EXAMPLE_TILES)
+    async def test_normal(
+        self,
+        fetch: AsyncMock,
+        get_cursor: AsyncMock,
+        get_targets: AsyncMock,
+        multicast: AsyncMock
+    ):
         exp_event_elem = ServerEvent.TilesState.Elem(
             range=PointRange(Point(-2, 2), Point(2, -2)),
             data=EXAMPLE_TILES.to_str()
@@ -152,24 +176,47 @@ class TilesStateEvent_TestCase(AsyncTestCase):
         )
 
         exp_call = call(
-            target_conns=[EXAMPLE_OLD_CURSOR],
+
+        )
+
+        message = Message(
+            event=CursorEvent.WINDOW_SIZE_SET,
+            payload=DataPayload(
+                id=EXAMPLE_OLD_CURSOR.id,
+                data=EXAMPLE_OLD_CURSOR
+            )
+        )
+        await CursorReceiver.notify_window_changed(message)
+
+        multicast.assert_awaited_with(
+            target_conns=[EXAMPLE_OLD_CURSOR.id],
             event=exp_event
         )
 
-        # receiver 실행
 
-        multicast.assert_awaited_with(
-            [exp_call]
-        )
+def get_score_stub(cur_id: str):
+    return Score(
+        cursor_id=cur_id,
+        rank=0,
+        value=0
+    )
 
 
-class TilesState_TestCase(AsyncMock):
-    @patch("BoardHandler.fetch", return_value=EXAMPLE_TILES)
-    @patch("CursorHandler.get", side_effect=get_cursor_stub)
-    @patch("CursorHandler.get_targets", return_value=NEW_TARGETS)
-    @patch("ScoreHandler.get", return_value=0)
+class CursorState_TestCase(AsyncTestCase):
+
     @patch("multicast")
-    def test_normal(self, fetch: AsyncMock, get_cursor: AsyncMock, get_targets: AsyncMock, get_score: AsyncMock, multicast: AsyncMock):
+    @patch("ScoreHandler.get", side_effect=get_score_stub)
+    @patch("CursorHandler.get_targets", return_value=NEW_TARGETS)
+    @patch("CursorHandler.get", side_effect=get_cursor_stub)
+    @patch("BoardHandler.fetch", return_value=EXAMPLE_TILES)
+    async def test_normal(
+        self,
+        fetch: AsyncMock,
+        get_cursor: AsyncMock,
+        get_targets: AsyncMock,
+        get_score: AsyncMock,
+        multicast: AsyncMock
+    ):
         exp_event_elem_1 = ServerEvent.CursorsState.Elem(
             id=new_cur_1.id,
             position=new_cur_1.position,
@@ -181,13 +228,17 @@ class TilesState_TestCase(AsyncMock):
         exp_event = ServerEvent.CursorsState(
             cursors=[exp_event_elem_1]
         )
-        exp_call = call(
-            target_conns=[EXAMPLE_OLD_CURSOR],
-            event=exp_event
-        )
 
-        # receiver 실행
+        message = Message(
+            event=CursorEvent.WINDOW_SIZE_SET,
+            payload=DataPayload(
+                id=EXAMPLE_OLD_CURSOR.id,
+                data=EXAMPLE_OLD_CURSOR
+            )
+        )
+        await CursorReceiver.notify_window_changed(message)
 
         multicast.assert_awaited_with(
-            [exp_call]
+            target_conns=[EXAMPLE_OLD_CURSOR.id],
+            event=exp_event
         )
