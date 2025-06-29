@@ -1,4 +1,6 @@
-from .base import event, ServerEvent, Empty
+from .base import event, ServerEvent
+from event.payload import Empty
+from typing import Type
 from data.base import DataObj
 
 from dataclasses import dataclass
@@ -7,11 +9,13 @@ from data.board import PointRange, Point
 from data.cursor import Color
 from datetime import datetime
 
+
 @event
 class Error(ServerEvent):
     event_name = "error"
 
     msg: str
+
 
 @event
 class MyCursor(ServerEvent):
@@ -19,31 +23,36 @@ class MyCursor(ServerEvent):
 
     id: str
 
+
 @event
+@dataclass
 class TilesState(ServerEvent):
     event_name = "tiles-state"
 
     @dataclass
     class Elem(DataObj):
-        range : PointRange
-        data  : str
+        range: PointRange
+        data: str
 
-    tiles:list[Elem] 
+    tiles: list[Elem]
+
 
 @event
+@dataclass
 class CursorsState(ServerEvent):
     event_name = "cursors-state"
 
     @dataclass
     class Elem(DataObj):
-        id        : str
-        position  : Empty | Point
-        pointer   : Empty | Point    | None 
-        color     : Empty | Color
-        revive_at : Empty | datetime | None
-        score     : Empty | int
-        
+        id: str
+        position: Type[Empty] | Point = Empty
+        pointer: Type[Empty] | Point | None = Empty
+        color: Type[Empty] | Color = Empty
+        revive_at: Type[Empty] | datetime | None = Empty
+        score: Type[Empty] | int = Empty
+
     cursors: list[Elem]
+
 
 @event
 class ScoreboardState(ServerEvent):
@@ -51,11 +60,12 @@ class ScoreboardState(ServerEvent):
 
     @dataclass
     class Elem(DataObj):
-        rank        : int
-        score       : int
-        before_rank : Empty | int
-    
+        rank: int
+        score: int
+        before_rank: Type[Empty] | int
+
     scores: list[Elem]
+
 
 @event
 class Chat(ServerEvent):
@@ -63,10 +73,11 @@ class Chat(ServerEvent):
 
     @dataclass
     class Elem(DataObj):
-        cursor_id:str
-        content:str
-    
+        cursor_id: str
+        content: str
+
     chats: list[Elem]
+
 
 @event
 class Explosion(ServerEvent):
