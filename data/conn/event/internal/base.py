@@ -12,7 +12,7 @@ class Event(DataObj):
         pass
 
 
-EVENT_DICT: dict[str, Event] = {}
+EVENT_DICT: dict[str, Type[Event]] = {}
 
 T = TypeVar('T', bound=Event)
 
@@ -22,7 +22,8 @@ def event(event: Type[T]) -> Type[T]:
 
     EVENT_DICT[event.event_name] = event
 
-    return dataclass(event)
+    # return dataclass(event)
+    return event
 
 
 class ValidationException(Exception):
