@@ -31,10 +31,6 @@ class ValidationException(Exception):
         self.msg = msg
 
 
-class Empty:
-    pass
-
-
 class ClientEvent(Event):
     pass
 
