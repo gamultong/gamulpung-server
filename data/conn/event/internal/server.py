@@ -11,6 +11,7 @@ from datetime import datetime
 
 
 @event
+@dataclass
 class Error(ServerEvent):
     event_name = "error"
 
@@ -18,6 +19,7 @@ class Error(ServerEvent):
 
 
 @event
+@dataclass
 class MyCursor(ServerEvent):
     event_name = "my-cursor"
 
@@ -25,6 +27,7 @@ class MyCursor(ServerEvent):
 
 
 @event
+@dataclass
 class TilesState(ServerEvent):
     event_name = "tiles-state"
 
@@ -37,6 +40,7 @@ class TilesState(ServerEvent):
 
 
 @event
+@dataclass
 class CursorsState(ServerEvent):
     event_name = "cursors-state"
 
@@ -53,6 +57,7 @@ class CursorsState(ServerEvent):
 
 
 @event
+@dataclass
 class ScoreboardState(ServerEvent):
     event_name = "scoreboard-state"
 
@@ -66,6 +71,7 @@ class ScoreboardState(ServerEvent):
 
 
 @event
+@dataclass
 class Chat(ServerEvent):
     event_name = "chat"
 
@@ -78,6 +84,7 @@ class Chat(ServerEvent):
 
 
 @event
+@dataclass
 class Explosion(ServerEvent):
     event_name = "explosion"
 
