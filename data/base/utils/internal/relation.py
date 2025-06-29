@@ -23,6 +23,9 @@ class Relation(Generic[ID_TYPE], DataObj, HaveId[ID_TYPE]):
             yield i
         return
 
+    def __len__(self):
+        return self.relations.__len__()
+
 
 if __name__ == "__main__":
     # iter 사용코드
