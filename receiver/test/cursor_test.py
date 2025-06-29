@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, call
 # height 변화 : 1 -> 2
 
 NEW_TILE = 0b11111111  # O
-ORD_TILE = 0b00000000  # X
+OLD_TILE = 0b00000000  # X
 # OOOOO
 # OXXXO
 # OXCXO
@@ -30,15 +30,15 @@ patch = PathPatch(MOCK_PATH)
 
 TILES_DATA = bytearray([
     NEW_TILE, NEW_TILE, NEW_TILE, NEW_TILE, NEW_TILE,
-    NEW_TILE, ORD_TILE, ORD_TILE, ORD_TILE, NEW_TILE,
-    NEW_TILE, ORD_TILE, ORD_TILE, ORD_TILE, NEW_TILE,
-    NEW_TILE, ORD_TILE, ORD_TILE, ORD_TILE, NEW_TILE,
+    NEW_TILE, OLD_TILE, OLD_TILE, OLD_TILE, NEW_TILE,
+    NEW_TILE, OLD_TILE, OLD_TILE, OLD_TILE, NEW_TILE,
+    NEW_TILE, OLD_TILE, OLD_TILE, OLD_TILE, NEW_TILE,
     NEW_TILE, NEW_TILE, NEW_TILE, NEW_TILE, NEW_TILE
 ])
 
 
 EXAMPLE_TILES = Tiles(TILES_DATA)
-EXAMPLE_ORD_CURSOR = Cursor(
+EXAMPLE_OLD_CURSOR = Cursor(
     conn_id="example",
     position=Point(0, 0),
     pointer=Point(0, 0),
@@ -47,30 +47,30 @@ EXAMPLE_ORD_CURSOR = Cursor(
     height=1
 )
 
-old_cur_1 = EXAMPLE_ORD_CURSOR.copy()
+old_cur_1 = EXAMPLE_OLD_CURSOR.copy()
 old_cur_1.conn_id = "old_1"
 
-old_cur_2 = EXAMPLE_ORD_CURSOR.copy()
+old_cur_2 = EXAMPLE_OLD_CURSOR.copy()
 old_cur_2.conn_id = "old_2"
 old_cur_2.position = Point(1, 1)
 
-new_cur_1 = EXAMPLE_ORD_CURSOR.copy()
+new_cur_1 = EXAMPLE_OLD_CURSOR.copy()
 new_cur_1.conn_id = "new_1"
 new_cur_1.position = Point(2, 2)
 
 OLD_TARGETS = Cursor.Targets(
-    _id=EXAMPLE_ORD_CURSOR.id,
+    _id=EXAMPLE_OLD_CURSOR.id,
     relations=["old_1", "old_2"]
 )
 
-EXAMPLE_ORD_CURSOR.sub[Cursor.Targets] = OLD_TARGETS
+EXAMPLE_OLD_CURSOR.sub[Cursor.Targets] = OLD_TARGETS
 
 NEW_TARGETS = Cursor.Targets(
-    _id=EXAMPLE_ORD_CURSOR.id,
+    _id=EXAMPLE_OLD_CURSOR.id,
     relations=["old_1", "old_2", "new_1"]
 )
 
-EXAMPLE_NEW_CURSOR = EXAMPLE_ORD_CURSOR.copy()
+EXAMPLE_NEW_CURSOR = EXAMPLE_OLD_CURSOR.copy()
 EXAMPLE_NEW_CURSOR.width = 2
 EXAMPLE_NEW_CURSOR.height = 2
 
@@ -91,15 +91,15 @@ def get_cursor_stub(id: str):
 
 class Validate_TestCase(TestCase):
     # move
-    case_1 = EXAMPLE_ORD_CURSOR.copy()
+    case_1 = EXAMPLE_OLD_CURSOR.copy()
     case_1.position = Point(1, 1)
 
     # window scale_up 1
-    case_2 = EXAMPLE_ORD_CURSOR.copy()
+    case_2 = EXAMPLE_OLD_CURSOR.copy()
     case_2.width = 2
 
     # window scale_up 2
-    case_3 = EXAMPLE_ORD_CURSOR.copy()
+    case_3 = EXAMPLE_OLD_CURSOR.copy()
     case_3.height = 2
 
     @cases(
@@ -110,28 +110,28 @@ class Validate_TestCase(TestCase):
         ]
     )
     def test_pass_vaildate(self, new_cur: Cursor):
-        res = validate(EXAMPLE_ORD_CURSOR, new_cur)
+        res = validate(EXAMPLE_OLD_CURSOR, new_cur)
 
         self.assertTrue(res)
 
     # same
-    case_1_ord = EXAMPLE_ORD_CURSOR.copy()
-    case_1_new = EXAMPLE_ORD_CURSOR.copy()
+    case_1_OLD = EXAMPLE_OLD_CURSOR.copy()
+    case_1_new = EXAMPLE_OLD_CURSOR.copy()
 
     # window scale_down
-    case_2_ord = EXAMPLE_ORD_CURSOR.copy()
-    case_2_ord.width = 2
-    case_2_ord.height = 2
-    case_2_new = EXAMPLE_ORD_CURSOR.copy()
+    case_2_OLD = EXAMPLE_OLD_CURSOR.copy()
+    case_2_OLD.width = 2
+    case_2_OLD.height = 2
+    case_2_new = EXAMPLE_OLD_CURSOR.copy()
 
     @cases(
         [
-            {"new_cur": case_1_new, "ord_cur": case_1_ord},
-            {"new_cur": case_2_new, "ord_cur": case_2_ord},
+            {"new_cur": case_1_new, "OLD_cur": case_1_OLD},
+            {"new_cur": case_2_new, "OLD_cur": case_2_OLD},
         ]
     )
-    def test_invaild(self, new_cur: Cursor, ord_cur: Cursor):
-        res = validate(ord_cur, new_cur)
+    def test_invaild(self, new_cur: Cursor, OLD_cur: Cursor):
+        res = validate(OLD_cur, new_cur)
 
         self.assertFalse(res)
 
@@ -152,7 +152,7 @@ class TilesStateEvent_TestCase(AsyncTestCase):
         )
 
         exp_call = call(
-            target_conns=[EXAMPLE_ORD_CURSOR],
+            target_conns=[EXAMPLE_OLD_CURSOR],
             event=exp_event
         )
 
@@ -182,7 +182,7 @@ class TilesState_TestCase(AsyncMock):
             cursors=[exp_event_elem_1]
         )
         exp_call = call(
-            target_conns=[EXAMPLE_ORD_CURSOR],
+            target_conns=[EXAMPLE_OLD_CURSOR],
             event=exp_event
         )
 
