@@ -12,7 +12,6 @@ from handler.score import ScoreHandler
 
 from .utils import multicast
 
-Message[DataPayload[Cursor[Cursor.Targets]]]
 
 
 def validate(old: Cursor, new: Cursor):
