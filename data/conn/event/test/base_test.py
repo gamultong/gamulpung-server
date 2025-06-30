@@ -7,19 +7,22 @@ from dataclasses import dataclass
 from tests.utils import cases
 from unittest import TestCase
 
+
 @event
+@dataclass
 class ExampleEvent(Event):
     event_name = "example"
 
     @dataclass
     class Elem(DataObj):
-        field:int
+        field: int
 
     field: list[Elem]
-    
+
     def assert_valid(self):
         raise ValidationException(self, "example")
-    
+
+
 class Event_TestCase(TestCase):
     def test_to_message(self):
         example = ExampleEvent(field=[ExampleEvent.Elem(field=1)])
@@ -35,7 +38,7 @@ class Event_TestCase(TestCase):
                 "content": example.to_dict(),
             }
         )
-        
+
     def test_assert_vaild(self):
         event = ExampleEvent(field=[ExampleEvent.Elem(field=5)])
 
@@ -101,4 +104,3 @@ class Event_TestCase(TestCase):
     def test_from_message_invalid(self, data: dict):
         with self.assertRaises(InvalidEventFormat):
             from_message(data)
-        
