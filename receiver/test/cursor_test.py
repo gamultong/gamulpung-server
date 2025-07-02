@@ -58,3 +58,16 @@ class CursorReceiver_TestCase(AsyncTestCase):
 
         reserve.assert_called_once_with(cursor)
         persist.assert_called_once_with(score)
+
+    @patch("ScoreHandler.create")
+    async def test_recreate_score(self, create: AsyncMock):
+        (cursor,) = get_cur_set(1)
+
+        message = Message(
+            event=CursorEvent.REVIVE,
+            payload=DataPayload(id=cursor.id, data=cursor)
+        )
+
+        await CursorReceiver.recreate_score(message)
+
+        create.assert_called_once_with(id=cursor.id)

@@ -34,6 +34,14 @@ class CursorReceiver():
 
         await reserve_revival(cursor)
 
+    @EventBroker.add_receiver(CursorEvent.REVIVE)
+    @staticmethod
+    async def recreate_score(message: Message[DataPayload[Cursor]]):
+        cursor = message.payload.data
+        assert cursor is not None
+
+        _ = await ScoreHandler.create(id=cursor.id)
+
 
 async def multicast_my_cursor(cursor: Cursor):
     event = ServerEvent.MyCursor(id=cursor.id)
