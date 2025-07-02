@@ -9,20 +9,10 @@ from data.conn.event import ServerEvent
 from handler.cursor import CursorEvent
 from handler.score import ScoreHandler
 
-from .utils import multicast
+from ..utils import multicast
 
 
-class CursorReceiver():
-    @EventBroker.add_receiver(CursorEvent.CREATED)
-    @staticmethod
-    async def cursor_created(message: Message[DataPayload[Cursor]]):
-        cursor = message.payload.data
-        assert cursor is not None
-
-        await ScoreHandler.create(id=cursor.id)
-
-        await multicast_my_cursor(cursor)
-
+class CursorDeathReceiver():
     @EventBroker.add_receiver(CursorEvent.DEATH)
     @staticmethod
     async def cursor_death(message: Message[DataPayload[Cursor]]):
@@ -33,20 +23,6 @@ class CursorReceiver():
         await move_to_persistent_scores(score)
 
         await reserve_revival(cursor)
-
-    @EventBroker.add_receiver(CursorEvent.REVIVE)
-    @staticmethod
-    async def recreate_score(message: Message[DataPayload[Cursor]]):
-        cursor = message.payload.data
-        assert cursor is not None
-
-        _ = await ScoreHandler.create(id=cursor.id)
-
-
-async def multicast_my_cursor(cursor: Cursor):
-    event = ServerEvent.MyCursor(id=cursor.id)
-
-    await multicast(target_conns=[cursor.conn_id], event=event)
 
 
 async def move_to_persistent_scores(score: Score):
