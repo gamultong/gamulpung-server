@@ -6,8 +6,8 @@ from data.score import Score
 
 from event.message import Message
 
-from receiver import CursorReceiver
-from receiver.internal.cursor import validate
+from receiver import NotifyWindowChangedReceiver
+from receiver.internal.cursor.notify_window_changed import validate
 
 from handler.cursor import CursorEvent
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
@@ -32,7 +32,7 @@ OLD_TILE = 0b00000000  # X
 # OXXXO
 # OOOOO
 
-MOCK_PATH = "receiver.internal.cursor"
+MOCK_PATH = "receiver.internal.cursor.notify_window_changed"
 patch = PathPatch(MOCK_PATH)
 
 TILES_DATA = bytearray([
@@ -186,7 +186,7 @@ class TilesStateEvent_TestCase(AsyncTestCase):
                 data=EXAMPLE_OLD_CURSOR
             )
         )
-        await CursorReceiver.notify_window_changed(message)
+        await NotifyWindowChangedReceiver.notify_window_changed(message)
 
         multicast.assert_awaited_with(
             target_conns=[EXAMPLE_OLD_CURSOR.id],
@@ -236,7 +236,7 @@ class CursorState_TestCase(AsyncTestCase):
                 data=EXAMPLE_OLD_CURSOR
             )
         )
-        await CursorReceiver.notify_window_changed(message)
+        await NotifyWindowChangedReceiver.notify_window_changed(message)
 
         multicast.assert_awaited_with(
             target_conns=[EXAMPLE_OLD_CURSOR.id],

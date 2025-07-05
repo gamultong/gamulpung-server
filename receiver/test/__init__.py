@@ -3,3 +3,4 @@ from .score_test import *
 from .cursor.create_score_test import *
 from .cursor.notify_my_cursor_test import *
 from .cursor.death_test import *
+from .cursor.notify_window_changed_test import *

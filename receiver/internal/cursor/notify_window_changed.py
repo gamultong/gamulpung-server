@@ -10,8 +10,7 @@ from handler.cursor import CursorEvent, CursorHandler, CursorException
 from handler.board import BoardHandler
 from handler.score import ScoreHandler
 
-from .utils import multicast
-
+from ..utils import multicast
 
 
 def validate(old: Cursor, new: Cursor):
@@ -24,7 +23,7 @@ def validate(old: Cursor, new: Cursor):
     return False
 
 
-class CursorReceiver():
+class NotifyWindowChangedReceiver():
     @EventBroker.add_receiver(CursorEvent.WINDOW_SIZE_SET)
     @EventBroker.add_receiver(CursorEvent.MOVED)
     @staticmethod
