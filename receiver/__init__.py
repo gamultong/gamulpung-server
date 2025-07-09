@@ -4,3 +4,4 @@ from .internal.score.send_initial_scoreboard import SendInitialScoreboardReceive
 from .internal.cursor.notify_my_cursor import NotifyMyCursorReceiver
 from .internal.cursor.death import CursorDeathReceiver
 from .internal.cursor.create_score import CreateScoreReceiver
+from .internal.cursor.notify_window_changed import NotifyWindowChangedReceiver
