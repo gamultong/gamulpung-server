@@ -8,3 +8,4 @@ from .cursor.create_score_test import *
 from .cursor.notify_my_cursor_test import *
 from .cursor.death_test import *
 from .cursor.notify_window_changed_test import *
+from .cursor.cursor_delete_test import DeleteCursorReceiver_TestCase
