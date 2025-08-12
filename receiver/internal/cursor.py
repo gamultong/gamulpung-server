@@ -1,5 +1,6 @@
 from event.broker import EventBroker
 from event.message import Message
+from event.payload import Empty
 
 from data.payload import DataPayload
 from data.cursor import Cursor
@@ -14,7 +15,6 @@ from .utils import multicast
 
 Message[DataPayload[Cursor[Cursor.Targets]]]
 
-
 def validate(old: Cursor, new: Cursor):
     if old.position != new.position:
         return True
@@ -23,7 +23,6 @@ def validate(old: Cursor, new: Cursor):
     if old.height < new.height:
         return True
     return False
-
 
 class CursorReceiver():
     @EventBroker.add_receiver(CursorEvent.WINDOW_SIZE_SET)
@@ -73,6 +72,53 @@ class CursorReceiver():
             target_conns=[cur_id],
             event=event
         )
+
+    @EventBroker.add_receiver(CursorEvent.POINTING)
+    @EventBroker.add_receiver(CursorEvent.DEATH)
+    @EventBroker.add_receiver(CursorEvent.MOVED)
+    @EventBroker.add_receiver(CursorEvent.REVIVE)
+    @EventBroker.add_receiver(CursorEvent.DELETE)
+    @EventBroker.add_receiver(CursorEvent.CREATED)
+    @staticmethod
+    async def notify_cursor_state_changed(message: Message[DataPayload[Cursor[Cursor.Watchers]]]):
+        cur_id = message.payload.id
+        new_cur = await CursorHandler.get(cur_id)
+
+        old_cur = message.payload.data
+        if old_cur is None:
+            old_cur = make_empty_cursor()
+        
+        watchers = await CursorHandler.get_watchers(new_cur)
+        event = ServerEvent.CursorsState(
+            cursors=[make_cursor_to_elem(old_cur, new_cur)]
+        )
+
+        await multicast(target_conns=[cur.id for cur in watchers], event=event)
+
+def make_empty_cursor():
+    return Cursor(
+        conn_id=Empty,
+        position=Empty,
+        pointer=Empty,
+        color=Empty,
+        width=Empty,
+        height=Empty,
+        revive_at=Empty,
+    )
+
+def make_cursor_to_elem(old: Cursor, new: Cursor):
+    position = Empty if old.position == new.position else new.position
+    pointer = Empty if old.pointer == new.pointer else new.pointer
+    color = Empty if old.color == new.color else new.color
+    revive_at = Empty if old.revive_at == new.revive_at else new.revive_at
+
+    return ServerEvent.CursorsState.Elem(
+        id=new.id,
+        position=position,
+        pointer=pointer,
+        color=color,
+        revive_at=revive_at,
+    )
 
 
 async def make_cursor_state_event(targets: list[Cursor]):
