@@ -1,5 +1,5 @@
 from data.base.utils import Relation
-from data.board import Point, PointRange, overlaps
+from data.board import Point, PointRange, is_overlap
 from data.cursor import Cursor, Color
 
 from . import cursor_exception as CursorException
@@ -272,7 +272,7 @@ class CursorHandler:
         for id in await cls.cursor_storage.keys():
             cursor = await cls.cursor_storage.get(id)
 
-            if not overlaps(cursor.view_range, range):
+            if not is_overlap(cursor.view_range, range):
                 continue
 
             if filters is not None and not all(filter(cursor) for filter in filters):
