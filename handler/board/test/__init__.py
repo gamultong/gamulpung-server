@@ -1,1 +1,1 @@
-from .board_test import BoardHandlerTestCase
+from .board_fetch_test import BoardHandler_TestCase

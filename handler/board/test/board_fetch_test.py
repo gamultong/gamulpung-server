@@ -34,15 +34,12 @@ def make_tiles(data):
     )
 
 
-patch = PathPatch("handler.board.internal.section")
+patch = PathPatch("handler.board.internal.board")
 
 SEC_1 = Section(Point(-1, 0), make_tiles(1))
 SEC_2 = Section(Point(0, 0), make_tiles(2))
 SEC_3 = Section(Point(-1, -1), make_tiles(3))
 SEC_4 = Section(Point(0, -1), make_tiles(4))
-
-config_mock = MagicMock()
-config_mock.LENGHT = 2
 
 
 class BoardHandler_TestCase(AsyncTestCase):
@@ -54,8 +51,10 @@ class BoardHandler_TestCase(AsyncTestCase):
             SEC_4.point: SEC_4
         }
 
-    @patch("Config", config_mock)
+    @patch("Config")
     async def test_fetch_normal(self, config):
+        config.LENGTH = 2
+
         res = await BoardHandler.fetch(
             PointRange(
                 Point(-1, 0),
@@ -66,3 +65,8 @@ class BoardHandler_TestCase(AsyncTestCase):
         self.assertEqual(
             res.data, bytearray([1, 2, 3, 4])
         )
+
+
+if __name__ == "__main__":
+    from unittest import main
+    main()

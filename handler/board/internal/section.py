@@ -7,12 +7,12 @@ NUM_MASK = 0b00000111
 
 
 class Config:
-    LENGHT = 100
+    LENGTH = 100
     MINE_RATIO = 0.3
 
 
 def point_abs_to_relate(abs_p: Point):
-    return Point(abs_p.x % Config.LENGHT, abs_p.y % Config.LENGHT)
+    return Point(abs_p.x % Config.LENGTH, abs_p.y % Config.LENGTH)
 
 
 def point_range_abs_to_relate(abs_pr: PointRange):
@@ -32,8 +32,8 @@ class Section():
     @property
     def abs_range(self):
         return PointRange(
-            Point((self.point.x+1) * Config.LENGHT, self.point.y * Config.LENGHT),
-            Point(self.point.x * Config.LENGHT, (self.point.y+1) * Config.LENGHT)
+            Point((self.point.x+1) * Config.LENGTH, self.point.y * Config.LENGTH),
+            Point(self.point.x * Config.LENGTH, (self.point.y+1) * Config.LENGTH)
         )
 
     def fetch(self, range: PointRange):
