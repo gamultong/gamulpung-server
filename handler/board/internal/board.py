@@ -1,6 +1,13 @@
 from data.board import PointRange, Tiles, Point
 from handler.board import Section, Config
 
+def point_set(length: int, coordinate:int):
+    if coordinate > length - 1:
+        coordinate =  length - 1
+    elif coordinate < 0:
+        coordinate = 0
+    return coordinate
+
 
 class BoardHandler:
     section_dict: dict[Point, Section] = {}
@@ -15,7 +22,19 @@ class BoardHandler:
         out = bytearray(out_width * out_height)
 
         for y in range(top // Config.LENGHT, bottom // Config.LENGHT - 1, -1):
-            for x in range(left // Config.LENGHT, bottom // Config.LENGHT + 1):
-                sec = section_dict[Point(x, y)]
+            out_top = point_set(Config.LENGHT, top - y * out_width)
+            out_bottom = point_set(Config.LENGHT, bottom - y * out_width)
+            for x in range(left // Config.LENGHT, right // Config.LENGHT + 1):
+                sec = BoardHandler.section_dict[Point(x, y)]
+
+                out_left = point_set(Config.LENGHT, left - x * out_width)
+                out_right = point_set(Config.LENGHT, right - x * out_width)
+
+                out_point_range = PointRange(
+                    Point(out_left, out_top), Point(out_right, out_bottom)
+                )
+
+                out_tiles = sec.tiles.at_tiles(out_point_range)
+                out += out_tiles.data
 
         return Tiles(out, out_width, out_height)
