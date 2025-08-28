@@ -1,1 +1,1 @@
-from .internal.conn import Conn
+from ...handler.conn.internal.conn import Conn

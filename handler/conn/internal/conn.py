@@ -1,5 +1,3 @@
-from data.base import DataObj
-
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from event.message import Message
@@ -7,7 +5,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Conn(DataObj):
+class Conn():
     id: str
     conn: WebSocket
 
@@ -33,4 +31,3 @@ class Conn(DataObj):
         except (ConnectionClosed, WebSocketDisconnect):
             # 커넥션이 종료되었는데도 타이밍 문제로 인해 커넥션을 가져왔을 수 있음.
             return
-

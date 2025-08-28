@@ -1,1 +1,1 @@
-from .internal.connection_manager import ConnectionManager
+from .internal.regacy_connection_manager import ConnectionManager

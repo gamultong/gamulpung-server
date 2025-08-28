@@ -7,15 +7,26 @@ from handler.storage.dict import DictSpace
 # section 좌표 기준으로 절대 좌표가 어디에 존재하는지 분석
 
 
-def point_set(abs_point, section_point):
-    result = abs_point - (section_point * Config.LENGTH)
+def abs_to_rel(abs_point: Point, section_point: Point):
+    def abs_to_rel_int(abs: int, sec: int):
+        res = abs - (sec * Config.LENGTH)
+        if res > Config.LENGTH - 1:
+            res = Config.LENGTH - 1
+        elif res < 0:
+            res = 0
+        return res
 
-    if result > Config.LENGTH - 1:
-        result = Config.LENGTH - 1
-    elif result < 0:
-        result = 0
+    return Point(
+        abs_to_rel_int(abs_point.x, section_point.x),
+        abs_to_rel_int(abs_point.y, section_point.y)
+    )
 
-    return result
+
+def abs_to_sec(abs_point: Point):
+    return Point(
+        abs_point.x // Config.LENGTH,
+        abs_point.y // Config.LENGTH
+    )
 
 
 def h_merge_tiles(left_tiles: Tiles, right_tiles: Tiles):
@@ -68,46 +79,73 @@ class BoardHandler:
         out_width = point_range.width
         out_height = point_range.height
 
-        top = point_range.top_left.y
-        bottom = point_range.bottom_right.y
-        left = point_range.top_left.x
-        right = point_range.bottom_right.x
+        section_top_left = abs_to_sec(point_range.top_left)
+        section_bottom_right = abs_to_sec(point_range.bottom_right)
 
-        section_top = top // Config.LENGTH
-        section_bottom = bottom // Config.LENGTH
-        section_left = left // Config.LENGTH
-        section_right = right // Config.LENGTH
+        section_top = section_top_left.y
+        section_bottom = section_bottom_right.y
+        section_left = section_top_left.x
+        section_right = section_bottom_right.x
 
         result = Tiles(bytearray(), out_width, 0)
 
         # top -> bottom 탐색
         for y in range(section_top, section_bottom - 1, -1):
-            out_top = point_set(top, y)
-            out_bottom = point_set(bottom, y)
-
-            h_tiles = Tiles(
-                bytearray(),
-                0,
-                abs(out_top-out_bottom) + 1
-            )
+            h_tiles: Tiles | None = None
 
             # left -> right 탐색
             for x in range(section_left, section_right + 1):
-                out_left = point_set(left, x)
-                out_right = point_set(right, x)
+                sec_point = Point(x, y)
 
                 out_point_range = PointRange(
-                    Point(out_left, out_top), Point(out_right, out_bottom)
+                    abs_to_rel(point_range.top_left, sec_point),
+                    abs_to_rel(point_range.bottom_right, sec_point)
                 )
-
                 sec = BoardHandler.section_dict[Point(x, y)]
 
                 out_tiles = sec.tiles.at_tiles(out_point_range)
-                h_tiles = h_merge_tiles(h_tiles, out_tiles)
+                if h_tiles is None:
+                    h_tiles = out_tiles
+                else:
+                    h_tiles = h_merge_tiles(h_tiles, out_tiles)
 
+            assert h_tiles
             result = v_merge_tiles(result, h_tiles)
 
         assert result.width == out_width
         assert result.height == out_height
 
         return result
+
+    @staticmethod
+    async def togle_flag(point: Point):
+        sec_p = abs_to_sec(point)
+        rel_p = abs_to_rel(point, sec_p)
+
+        section = BoardHandler.section_dict[sec_p]
+        tile = section.tiles.at_tile(rel_p)
+
+        if tile.is_open:
+            return
+
+        tile.is_flag = not tile.is_flag
+
+        section.tiles.update_at(rel_p, tile)
+
+    @staticmethod
+    async def open_tiles(point: Point):
+        sec_p = abs_to_sec(point)
+        rel_p = abs_to_rel(point, sec_p)
+
+        section = BoardHandler.section_dict[sec_p]
+        tile = section.tiles.at_tile(rel_p)
+
+        if tile.is_open:
+            return
+
+        if tile.is_flag:
+            return
+
+        tile.is_open = True
+
+        section.tiles.update_at(rel_p, tile)

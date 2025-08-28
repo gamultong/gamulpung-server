@@ -9,62 +9,35 @@ from handler.board import Section, BoardHandler
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
 from tests.utils import PathPatch, cases, override, MockSet, Wrapper as Wp
-
-
-OPEN_TILE = Tile(
-    is_open=True,
-    is_mine=False,
-    is_flag=False,
-    color=Color.BLUE,
-    number=None
-)
-OPEN_SEC = Section(
-    point=Point(0, 0),
-    tiles=Tiles(
-        data=bytearray([OPEN_TILE.data]),
-        width=1,
-        height=1
-    )
-)
-
-CLOSE_TILE = Tile(
-    is_open=False,
-    is_mine=False,
-    is_flag=False,
-    color=Color.BLUE,
-    number=None
-)
-CLOSE_SEC = Section(
-    point=Point(0, 1),
-    tiles=Tiles(
-        data=bytearray([CLOSE_TILE.data]),
-        width=1,
-        height=1
-    )
-)
+from .tiles_mock import POINT, POINTRANGE, CLOSE_TILE, FLAG_ON_TILE, get_sec, setup_sec
 
 patch = PathPatch("handler.board.internal.board")
 
 
 class BoardHandler_TestCase(AsyncTestCase):
-    def setUp(self) -> None:
-        BoardHandler.section_dict = {
-            OPEN_SEC.point: OPEN_SEC,
-            CLOSE_SEC.point: CLOSE_SEC
-        }
-
     @patch("Config")
-    def test_togle_flag_opened(self, config):
+    @cases([
+        {"sec": get_sec(CLOSE_TILE), "exp": True},
+        {"sec": get_sec(FLAG_ON_TILE), "exp": False}
+    ])
+    async def test_togle_flag_togle(self, config, sec: Section, exp: bool):
+        setup_sec(sec)
+
         config.LENGTH = 1
+
         await BoardHandler.togle_flag(
             Point(0, 0)
         )
-        await BoardHandler.togle_flag(
-            Point(0, 1)
+
+        tiles = await BoardHandler.fetch(
+            PointRange(
+                Point(0, 0), Point(0, 0)
+            )
         )
 
-        opened_tiles = await BoardHandler.fetch(PointRange(Point(0, 0), Point(0, 0)))
-        closed_tiles = await BoardHandler.fetch(PointRange(Point(0, 1), Point(0, 1)))
+        self.assertIs(tiles.at_tile(Point(0, 0)).is_flag, exp)
 
-        self.assertFalse(opened_tiles.at_tile(Point(0, 0)).is_flag)
-        self.assertTrue(closed_tiles.at_tile(Point(0, 0)).is_flag)
+
+if __name__ == "__main__":
+    from unittest import main
+    main()

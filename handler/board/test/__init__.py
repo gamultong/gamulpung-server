@@ -1,1 +1,3 @@
-from .board_fetch_test import BoardHandler_TestCase
+from .board_fetch_test import BoardHandler_TestCase as BoardHandler_Fetch_TestCase
+from .board_togle_flag_test import BoardHandler_TestCase as BoardHandler_TogleFlag_TestCase
+from .board_open_tiles_test import BoardHandler_TestCase as BoardHandler_OpenTiles_TestCase
