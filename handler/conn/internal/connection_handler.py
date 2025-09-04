@@ -15,6 +15,9 @@ class ConnectionHandler:
     conn_dict: dict[str, Conn] = {}
 
     @staticmethod
+    async def join()
+
+    @staticmethod
     async def broadcast(target_ids: list[str], external_event: ServerEvent.Base):
 
         for id in target_ids:
