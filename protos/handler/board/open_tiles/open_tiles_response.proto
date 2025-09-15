@@ -1,0 +1,9 @@
+edition = "2023";
+
+package handler.board;
+
+import "common/base.proto";
+
+message OpenTilesResponse {
+    OperationResult result = 1;
+}

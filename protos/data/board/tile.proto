@@ -1,0 +1,11 @@
+edition = "2023";
+
+message Tile {
+    bytes data = 1;
+}
+
+message Tiles {
+    bytes data = 1;
+    int32 width = 2;
+    int32 height = 3;
+}
