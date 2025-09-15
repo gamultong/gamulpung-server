@@ -1,0 +1,29 @@
+edition = "2023";
+
+package handler.cursor;
+
+import "handler/cursor/revive/revive_reqeust.proto";
+import "handler/cursor/revive/revive_response.proto";
+import "handler/cursor/set_window_size/set_window_size_reqeust.proto";
+import "handler/cursor/set_window_size/set_window_size_response.proto";
+import "handler/cursor/move/move_reqeust.proto";
+import "handler/cursor/move/move_response.proto";
+import "handler/cursor/set_pointer/set_pointer_reqeust.proto";
+import "handler/cursor/set_pointer/set_pointer_response.proto";
+import "handler/cursor/kill/kill_reqeust.proto";
+import "handler/cursor/kill/kill_response.proto";
+import "handler/cursor/create/create_reqeust.proto";
+import "handler/cursor/create/create_response.proto";
+import "handler/cursor/delete/delete_reqeust.proto";
+import "handler/cursor/delete/delete_response.proto";
+
+service CursorHandler {
+    rpc revive(ReviveRequest) returns (ReviveResponse);
+    rpc set_window_size(SetWindowSizeRequest) returns (SetWindowSizeResponse);
+    rpc move(MoveRequest) returns (MoveResponse);
+    rpc set_pointer(SetPointerRequest) returns (SetPointerResponse);
+    rpc kill(KillRequest) returns (KillResponse);
+    rpc create(CreateRequest) returns (CreateResponse);
+    rpc delete(DeleteRequest) returns (DeleteResponse);
+    rpc get(GetRequest) returns (GetResponse);
+}

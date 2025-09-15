@@ -1,0 +1,10 @@
+edition = "2023";
+
+package handler.cursor;
+
+import "common/base.proto";
+import "data/cursor/cursor.proto";
+
+message SetWindowSizeResponse {
+    Cursor cursor = 1;
+}

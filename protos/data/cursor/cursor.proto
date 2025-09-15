@@ -1,0 +1,24 @@
+edition = "2023";
+
+import "google/protobuf/timestamp.proto";
+
+message Cursor {
+    string conn_id = 1;
+    Point position = 2;
+    Point pointer = 3;
+    Color color = 4;
+    int32 width = 5;
+    int32 height = 6;
+    google.protobuf.Timestamp revive_at = 7
+
+    enum Color {
+        Red = 0;
+        YELLOW = 1;
+        PURPLE = 2;
+        BLUE = 3;
+    }
+}
+
+message CursorId {
+    string id = 1;
+}
