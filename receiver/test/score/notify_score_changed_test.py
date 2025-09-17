@@ -1,14 +1,3 @@
-# state 변경
-
-# score create -> score.id -> 새로 들어온 커서
-# 새로운 커서 -> 얘는 scoreboad 정보가 하나도 없음
-# -> 다 줘야 함
-
-# watched(본인 포함) -> score 전달
-# if scoreboard 변동시:
-#     fetch scoreboard -> 변경 사항 전달 -> broadcast
-
-
 from event.broker import EventBroker
 from event.message import Message
 from event.payload import Empty
@@ -24,20 +13,19 @@ from handler.score import ScoreEvent
 
 from unittest import TestCase, IsolatedAsyncioTestCase as AsyncTestCase
 from unittest.mock import AsyncMock, MagicMock, call
-from .test_tools import get_cur_set, assertMulticast
+from ..test_tools import get_cur_set, assertMulticast
 from tests.utils import PathPatch, cases, override, MockSet, Wrapper as Wp
 from config import SCOREBOARD_SIZE
 
-from receiver.internal.score import (
-    ScoreReceiver,
-    deliver_whole_scoreboard,
-    multicast_scoreboard_state,
+from receiver.internal.score.notify_score_changed import (
+    NotifyScoreChangedReceiver,
     fetch_scoreboard,
     get_rank_changed_range
 )
 
-MOCK_PATH = "receiver.internal.score"
+MOCK_PATH = "receiver.internal.score.notify_score_changed"
 patch = PathPatch(MOCK_PATH)
+
 
 # scoreboard size 넘기면 -> scoreboard만큼만 줘야함
 SCOREBOARD_STUB = [
@@ -108,75 +96,10 @@ class FetchScoreboard_TestCase(AsyncTestCase):
         )
 
 
-class DeliverWholeScoreBoard_MockSet(MockSet):
-    __path__ = MOCK_PATH
-
-    get_by_rank: Wp[AsyncMock] = override("ScoreHandler.get_by_rank")
-    length: Wp[AsyncMock] = override("ScoreHandler.length")
-    multicast_scoreboard_state: Wp[AsyncMock] = override("multicast_scoreboard_state")
-
-
-class DeliverWholeScoreBoard_TestCase(AsyncTestCase):
-    @DeliverWholeScoreBoard_MockSet.patch(
-        override("length", return_value=SCOREBOARD_SIZE + 2),
-        override("get_by_rank", side_effect=get_by_rank_stub)
-    )
-    async def test_normal(self, mock: DeliverWholeScoreBoard_MockSet):
-        cursor = Cursor.create("main")
-
-        await deliver_whole_scoreboard(cursor)
-
-        mock.multicast_scoreboard_state.assert_called_once_with(
-            target_conns=[cursor],
-            scores=SCOREBOARD_STUB[:SCOREBOARD_SIZE]
-        )
-
-    @DeliverWholeScoreBoard_MockSet.patch(
-        override("length", return_value=SCOREBOARD_SIZE - 2),
-        override("get_by_rank", side_effect=get_by_rank_stub),
-    )
-    async def test_normal(self, mock: DeliverWholeScoreBoard_MockSet):
-        cursor = Cursor.create("main")
-
-        await deliver_whole_scoreboard(cursor)
-
-        mock.multicast_scoreboard_state.assert_called_once_with(
-            target_conns=[cursor],
-            scores=SCOREBOARD_STUB[:SCOREBOARD_SIZE-2]
-        )
-
-
-class MulticastScoreboardState_TestCase(AsyncTestCase):
-    @patch("multicast")
-    async def test_normal(self, multicast: AsyncMock):
-        cursor = Cursor.create("main")
-        score = Score(cursor_id="main", value=1, rank=1)
-
-        await multicast_scoreboard_state(
-            target_conns=[cursor],
-            scores=[score]
-        )
-
-        multicast.assert_called_once()
-
-        event = ServerEvent.ScoreboardState(
-            scores=[ServerEvent.ScoreboardState.Elem(
-                rank=score.rank,
-                score=score.value,
-                before_rank=Empty
-            )]
-        )
-        assertMulticast(self, multicast.mock_calls[0], target_conns=[cursor.id], event=event)
-
-
-cursor_a = Cursor.create("A")
-scoreboard = SCOREBOARD_STUB
-changed_range = (1, 2)
-current_score = Score(
-    cursor_id=cursor_a.id,
-    rank=1,
-    value=0
-)
+(cursor_a, ) = get_cur_set(1)
+scoreboard = []
+changed_range = (Score("a", 1, 1), Score("b", 0, 2))
+current_score = Score("cur", 1, 1)
 
 
 class NotifiyScoreChanged_MockSet(MockSet):
@@ -215,26 +138,6 @@ class NotifiyScoreChanged_TestCase(AsyncTestCase):
     ):
         self.input_message.event = event
 
-        await ScoreReceiver.notify_score_changed(self.input_message)
+        await NotifyScoreChangedReceiver.notify_score_changed(self.input_message)
 
         mock.broadcast_scoreboard_state.assert_called_once_with(scoreboard)
-
-
-class SendInitialScoreBoard_MockSet(MockSet):
-    __path__ = MOCK_PATH
-
-    get_cursor: Wp[AsyncMock] = override("CursorHandler.get", return_value=cursor_a)
-    deliver_whole_scoreboard: Wp[MagicMock] = override("deliver_whole_scoreboard")
-
-
-class SendInitialScoreBoard_TestCase(AsyncTestCase):
-    @SendInitialScoreBoard_MockSet.patch()
-    async def test_created(self, mock: SendInitialScoreBoard_MockSet):
-        input_message = Message(
-            event=ScoreEvent.CREATED,
-            payload=DataPayload(id=None),
-        )
-
-        await ScoreReceiver.send_initial_scoreboard(input_message)
-
-        mock.deliver_whole_scoreboard.assert_called_once_with(cursor_a)

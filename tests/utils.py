@@ -45,8 +45,8 @@ class PathPatch:
 @dataclass
 class override:
     name: str
-    return_value: any = None
-    side_effect: any = None
+    return_value: Any = None
+    side_effect: Any = None
 
 
 MOCK_TYPE = TypeVar("MOCK_TYPE")
