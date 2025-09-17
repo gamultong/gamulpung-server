@@ -1,0 +1,11 @@
+edition = "2023";
+
+package handler.cursor;
+
+import "google/protobuf/timestamp.proto";
+import "data/cursor/cursor.proto";
+
+message KillRequest {
+    CursorId id = 1;
+    google.protobuf.Timestamp duration = 2;
+}

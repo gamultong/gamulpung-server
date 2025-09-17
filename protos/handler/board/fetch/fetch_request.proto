@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package handler.board;
+
+import "data/board/point.proto";
+
+message FetchRequest {
+    PointRange point_range = 1;
+}

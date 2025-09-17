@@ -1,0 +1,9 @@
+edition = "2023";
+
+package handler.cursor;
+
+import "data/cursor/cursor.proto";
+
+message GetResponse {
+    Cursor cursor = 1;
+}

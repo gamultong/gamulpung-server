@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+message Point {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message PointRange {
+    Point top_left = 1;
+    Point bottom_right = 2;
+}

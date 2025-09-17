@@ -1,0 +1,9 @@
+edition = "2023";
+
+package handler.board;
+
+import "data/board/tile.proto";
+
+message FetchResponse {
+    Tiles tiles = 1;
+}

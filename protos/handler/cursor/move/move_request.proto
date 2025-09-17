@@ -1,0 +1,11 @@
+edition = "2023";
+
+package handler.cursor;
+
+import "data/board/point.proto";
+import "data/cursor/cursor.proto";
+
+message MoveRequest {
+    CursorId id = 1;
+    Point p = 2;
+}

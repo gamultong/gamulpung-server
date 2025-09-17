@@ -1,0 +1,16 @@
+edition = "2023";
+
+package handler.board;
+
+import "handler/board/fetch/fetch_request.proto";
+import "handler/board/fetch/fetch_response.proto";
+import "handler/board/togle_flag/togle_flag_request.proto";
+import "handler/board/togle_flag/togle_flag_response.proto";
+import "handler/board/open_tiles/open_tiles_request.proto";
+import "handler/board/open_tiles/open_tiles_response.proto";
+
+service BoardHandler {
+    rpc fetch(FetchRequest) returns (FetchResponse);
+    rpc togle_flag(TogleFlagRequest) returns (TogleFlagResponse);
+    rpc open_tiles(OpenTilesRequest) returns (OpenTilesResponse);
+}
