@@ -1,10 +1,9 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
-from handler.conn import ConnectionManager
-from data.board import Section
+from handler.conn import ConnectionHandler, Conn
 from receiver import *
 from event.message import Message
-from data.payload import EventCollection, ErrorPayload
+from event.payload import DataPayload
 from config import WINDOW_SIZE_LIMIT
 
 app = FastAPI()
@@ -12,46 +11,19 @@ app = FastAPI()
 
 @app.websocket("/session")
 async def session(ws: WebSocket):
-    try:
-        view_width = int(ws.query_params.get("view_width"))
-        view_height = int(ws.query_params.get("view_height"))
+    conn = Conn.create(ws)
 
-        if \
-                view_width <= 0 or view_height <= 0 or \
-                view_width > WINDOW_SIZE_LIMIT or view_height > WINDOW_SIZE_LIMIT:
-            raise Exception({"msg": "don't play with view size"})
-
-    except KeyError as e:
-        print(f"WebSocket connection closed: {e}")
-        await ws.close(code=1000, reason="Missing required data")
-        return
-    except TypeError as e:
-        print(f"WebSocket connection closed: {e}")
-        await ws.close(code=1000, reason="Data not properly typed")
-        return
-    except Exception as e:
-        await ws.close(code=1006, reason=e.__repr__())
-        return
-
-    conn = await ConnectionManager.add(ws, width=view_width, height=view_height)
+    await ConnectionHandler.join(conn)
 
     while True:
         try:
-            msg = await conn.receive()
-            await ConnectionManager.publish_client_event(conn_id=conn.id, msg=msg)
+            client_event = await conn.receive()
+            await ConnectionHandler.publish_client_event(conn, client_event)
         except (WebSocketDisconnect, ConnectionClosed) as e:
             # 연결 종료됨
             break
-        except Exception as e:
-            await conn.send(Message(
-                event=EventCollection.ERROR,
-                payload=ErrorPayload(msg=e)
-            ))
 
-            print(f"Unhandled error while handling message: \n{msg.__dict__}\n{type(e)}: '{e}'")
-            break
-
-    await ConnectionManager.close(conn)
+    await ConnectionHandler.quit(conn)
 
 
 @app.get("/")

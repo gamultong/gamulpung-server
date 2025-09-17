@@ -2,10 +2,10 @@ from dataclasses import dataclass, Field
 from typing import Union
 
 
-
 # TODO: validate_check(DataObj -> dataclasss)
 class DataObj:
     # DataObj가 dataclass로 예측
+    from typing_extensions import dataclass_transform
     # dataclass인지 vaildate 처리를 해주면 좋음
 
     # hinting을 위해 명시
@@ -19,7 +19,7 @@ class DataObj:
             }
         )
 
-    def to_dict(self):        
+    def to_dict(self):
         def __item_parsing(item):
             if issubclass(type(item), DataObj):
                 return item.to_dict()
@@ -29,7 +29,6 @@ class DataObj:
             key: __item_parsing(self.__dict__[key])
             for key in self.__dataclass_fields__
         }
-
 
 
 def copy(item):

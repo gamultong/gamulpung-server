@@ -20,3 +20,8 @@ class EventEnum(str, Enum):
 class DataPayload(Generic[DATA_TYPE], Payload):
     id: str
     data: DATA_TYPE | None = None
+
+
+@dataclass
+class ExternalEventPayload(Generic[DATA_TYPE], Payload):
+    data: DATA_TYPE

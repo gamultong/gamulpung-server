@@ -7,12 +7,11 @@ from . import cursor_exception as CursorException
 from event.payload import DumbHumanException
 from event.broker import publish_data_event
 
-from data.payload import EventEnum, DataPayload
+from event.payload import EventEnum, DataPayload
 
 from handler.storage.interface import KeyValueInterface, ListInterface
 from handler.storage.dict import DictStorage
 from handler.storage.list.array import ArrayListStorage
-from data.payload import DataPayload
 from event.broker import publish_data_event
 from event.message import Message
 

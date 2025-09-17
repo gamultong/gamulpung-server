@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
+from event.payload import DataPayload
 
-from data.payload import DataPayload
 from data.cursor import Cursor
 from data.board import Tiles, PointRange
 from data.conn.event import ServerEvent
@@ -19,8 +19,8 @@ class NotifyWindowChangedReceiver():
     @staticmethod
     async def notify_window_changed(message: Message[DataPayload[Cursor[Cursor.Targets]]]):
         cur_id = message.payload.id
-
         old_cur = message.payload.data
+
         assert old_cur is not None
 
         new_cur = await CursorHandler.get(cur_id)

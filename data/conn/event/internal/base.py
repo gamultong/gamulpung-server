@@ -12,20 +12,6 @@ class Event(DataObj):
         pass
 
 
-EVENT_DICT: dict[str, Type[Event]] = {}
-
-T = TypeVar('T', bound=Event)
-
-
-def event(event: Type[T]) -> Type[T]:
-    assert issubclass(event, Event)
-
-    EVENT_DICT[event.event_name] = event
-
-    # return dataclass(event)
-    return event
-
-
 class ValidationException(Exception):
     def __init__(self, event: Event, msg: str):
         self.event = event
@@ -37,11 +23,19 @@ class Empty:
 
 
 class ClientEvent(Event):
-    pass
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        event_name = cls.event_name
+        EVENT_DICT[event_name] = type(cls)
 
 
 class ServerEvent(Event):
     pass
+
+
+EVENT_DICT: dict[str, Type[ClientEvent]] = {}
+
+T = TypeVar('T', bound=ClientEvent)
 
 
 def to_message(event: Event):
@@ -68,7 +62,7 @@ def parsing_type(field_type: type):
     return origin_type, args_type[0]
 
 
-def data_obj_parsing(data: dict, data_type: type[DataObj]):
+def data_obj_parsing(data: dict, data_type: type[T]):
     param = {}
     for key, field_type in get_anno_items(data_type):
 
@@ -112,8 +106,8 @@ def data_obj_parsing(data: dict, data_type: type[DataObj]):
 
 def from_message(message: dict):
     try:
-        heeader = message["header"]
-        event = heeader["event"]
+        header = message["header"]
+        event = header["event"]
         content = message["content"]
     except KeyError:
         # 메시지 포맷이 잘못됨

@@ -1,18 +1,19 @@
-from .base import event, ClientEvent, ValidationException
-
+from .base import ClientEvent, ValidationException
+from dataclasses import dataclass
 from config import WINDOW_SIZE_LIMIT, CHAT_MAX_LENGTH
 from data.board import Point
 
-@event
+
+@dataclass
 class SetWindowSize(ClientEvent):
     event_name = "set-window-size"
 
-    width:int
-    height:int
+    width: int
+    height: int
 
     def assert_valid(self):
         size_limit = (WINDOW_SIZE_LIMIT - 1) / 2
-        
+
         if self.width > size_limit:
             raise ValidationException(
                 event=self,
@@ -24,29 +25,33 @@ class SetWindowSize(ClientEvent):
                 msg=f"height의 최대길이는 {size_limit}입니다."
             )
 
-@event
+
+@dataclass
 class OpenTile(ClientEvent):
     event_name = "open-tile"
 
     position: Point
 
-@event
+
+@dataclass
 class SetFlag(ClientEvent):
     event_name = "set-flag"
 
     position: Point
 
-@event
+
+@dataclass
 class Move(ClientEvent):
     event_name = "move"
 
     position: Point
 
-@event
+
+@dataclass
 class Chat(ClientEvent):
     event_name = "chat"
 
-    content:str
+    content: str
 
     def assert_valid(self):
         if len(self.content) > CHAT_MAX_LENGTH:
