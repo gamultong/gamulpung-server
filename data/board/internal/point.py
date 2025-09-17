@@ -8,8 +8,8 @@ class Point(DataObj):
     x: int
     y: int
 
-    def copy(self):
-        return Point(self.x, self.y)
+    def __hash__(self) -> int:
+        return (self.x, self.y).__hash__()
 
     def marshal_bytes(self) -> bytes:
         x_b = self.x.to_bytes(length=8, signed=True)
@@ -39,11 +39,11 @@ class PointRange(DataObj):
 
     @property
     def width(self):
-        return self.bottom_right.x - self.top_left.x
+        return self.bottom_right.x - self.top_left.x + 1
 
     @property
     def height(self):
-        return self.top_left.y - self.bottom_right.y
+        return self.top_left.y - self.bottom_right.y + 1
 
     def is_in(self, point: Point) -> bool:
         return \
@@ -57,7 +57,7 @@ class PointRange(DataObj):
         return PointRange(top_left, bottom_right)
 
 
-def overlaps(first: PointRange, second: PointRange) -> bool:
+def is_overlap(first: PointRange, second: PointRange) -> bool:
     res = False
 
     res |= first.is_in(second.top_left)

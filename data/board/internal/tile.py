@@ -121,6 +121,7 @@ def extract_color(b: int) -> Color:
             return Color.BLUE
         case 3:
             return Color.PURPLE
+    assert False
 
 
 def extract_number(i: int) -> int | None:
