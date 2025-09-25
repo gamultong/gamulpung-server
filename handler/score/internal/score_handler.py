@@ -1,10 +1,9 @@
 from data.score import Score
-from data.payload import EventEnum, DataPayload
+from event.payload import EventEnum, IdDataPayload
 
 from handler.storage.interface import KeyValueInterface, ListInterface
 from handler.storage.dict import DictStorage
 from handler.storage.list.array import ArrayListStorage
-from data.payload import DataPayload
 from event.broker import EventBroker, publish_data_event
 from event.message import Message
 

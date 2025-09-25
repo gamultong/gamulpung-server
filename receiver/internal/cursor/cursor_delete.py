@@ -1,12 +1,12 @@
 from handler.score import ScoreHandler
-from data.payload import DataPayload
+from event.payload import IdDataPayload
 from data.cursor import Cursor
 from event.message import Message
 
 
 class DeleteCursorReceiver:
     @staticmethod
-    async def cursor_delete(message: Message[DataPayload[Cursor]]):
+    async def cursor_delete(message: Message[IdDataPayload[str, Cursor]]):
         assert message.payload.data
         cursor = message.payload.data
 

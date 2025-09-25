@@ -1,8 +1,8 @@
-from config import SCOREBOARD_SIZE
+from utils.config import Config
 
 from data.score import Score
 
-from data.payload import DataPayload
+from event.payload import IdDataPayload
 
 from handler.score import ScoreHandler, ScoreEvent, ScoreNotFoundException
 from handler.cursor import CursorHandler
@@ -17,7 +17,7 @@ class NotifyScoreChangedReceiver():
     @EventBroker.add_receiver(ScoreEvent.DELETED)
     @EventBroker.add_receiver(ScoreEvent.UPDATED)
     @staticmethod
-    async def notify_score_changed(message: Message[DataPayload[Score]]):
+    async def notify_score_changed(message: Message[IdDataPayload[str, Score]]):
         old_score = message.payload.data
 
         cur_score = await get_current_score(message.payload.id)
@@ -36,9 +36,9 @@ async def get_current_score(id: str):
 
 
 async def fetch_scoreboard(start, end) -> tuple[Score]:
-    if start > SCOREBOARD_SIZE:
+    if start > Config.SCOREBOARD_SIZE:
         return tuple()
-    end = min(end, SCOREBOARD_SIZE)
+    end = min(end, Config.SCOREBOARD_SIZE)
 
     scores = await ScoreHandler.get_by_rank(start, end)
 

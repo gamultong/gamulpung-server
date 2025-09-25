@@ -1,4 +1,7 @@
-from data.board import PointRange, Tiles, Point
+from data.board import PointRange, Tiles, Point, Tile
+from data.conn.event import ServerEvent
+from event.payload import EventEnum, Event
+from event.broker import publish_data_event
 from .section import Section, Config
 
 from handler.storage.interface import KeyValueInterface
@@ -63,6 +66,11 @@ def v_merge_tiles(top_tile: Tiles, bottom_tile: Tiles):
     )
 
 
+class BoardEvent(EventEnum):
+    EXPLOSION = "EXPLOSION"
+    UPDATE = "Board.UPDATE"
+
+
 class BoardHandler:
     """
     Method 
@@ -73,8 +81,8 @@ class BoardHandler:
     """
     section_dict: dict[Point, Section] = {}
 
-    @staticmethod
-    async def fetch(point_range: PointRange):
+    @classmethod
+    async def fetch(cls, point_range: PointRange):
         # 반환할 데이터 공간 미리 할당
         out_width = point_range.width
         out_height = point_range.height
@@ -117,35 +125,36 @@ class BoardHandler:
 
         return result
 
-    @staticmethod
-    async def togle_flag(point: Point):
+    @classmethod
+    async def togle_flag(cls, point: Point):
         sec_p = abs_to_sec(point)
         rel_p = abs_to_rel(point, sec_p)
 
         section = BoardHandler.section_dict[sec_p]
         tile = section.tiles.at_tile(rel_p)
-
-        if tile.is_open:
-            return
 
         tile.is_flag = not tile.is_flag
 
         section.tiles.update_at(rel_p, tile)
 
-    @staticmethod
-    async def open_tiles(point: Point):
+        await publish_data_event(BoardEvent.UPDATE, data=tile, id=point)
+
+    @classmethod
+    async def open_tiles(cls, point: Point):
         sec_p = abs_to_sec(point)
         rel_p = abs_to_rel(point, sec_p)
 
         section = BoardHandler.section_dict[sec_p]
         tile = section.tiles.at_tile(rel_p)
 
-        if tile.is_open:
-            return
-
-        if tile.is_flag:
-            return
-
         tile.is_open = True
 
         section.tiles.update_at(rel_p, tile)
+
+        await publish_data_event(BoardEvent.UPDATE, data=tile, id=point)
+
+    @classmethod
+    async def fetch_point(cls, point: Point) -> Tile:
+        tiles = await cls.fetch(PointRange(point, point))
+        tile = tiles.at_tile(point)
+        return tile

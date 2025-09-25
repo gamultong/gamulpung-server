@@ -1,4 +1,4 @@
-from .base import event, ServerEvent
+from .base import ServerEvent
 from event.payload import Empty
 from typing import Type
 from data.base import DataObj

@@ -1,5 +1,5 @@
 # from limits import storage, strategies, parse
-# from config import MESSAGE_RATE_LIMIT
+# from utils.config import MESSAGE_RATE_LIMIT
 # from uuid import uuid4
 # import asyncio
 # from fastapi.websockets import WebSocket

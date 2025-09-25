@@ -22,7 +22,8 @@ class Conn():
     conn: WebSocket
 
     @staticmethod
-    def create(ws: WebSocket, id: str | None = None):
+    async def create(ws: WebSocket, id: str | None = None):
+        await ws.accept()
         if id is None:
             id = uuid4().hex
         return Conn(id=id, conn=ws)

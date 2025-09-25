@@ -1,17 +1,13 @@
 from fastapi import FastAPI, WebSocket, Response, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosed
 from handler.conn import ConnectionHandler, Conn
-from receiver import *
-from event.message import Message
-from event.payload import DataPayload
-from config import WINDOW_SIZE_LIMIT
 
 app = FastAPI()
 
 
 @app.websocket("/session")
 async def session(ws: WebSocket):
-    conn = Conn.create(ws)
+    conn = await Conn.create(ws)
 
     await ConnectionHandler.join(conn)
 

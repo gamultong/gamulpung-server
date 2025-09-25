@@ -1,8 +1,8 @@
 from event.broker import EventBroker
 from event.message import Message
+from event.payload import IdPayload
 
 from data.conn.event import ServerEvent
-from data.payload import DataPayload
 from data.cursor import Cursor
 from data.conn.event import ServerEvent
 
@@ -14,9 +14,9 @@ from ..utils import multicast
 class NotifyMyCursorReceiver():
     @EventBroker.add_receiver(CursorEvent.CREATED)
     @staticmethod
-    async def notify_my_cursor(message: Message[DataPayload[Cursor]]):
-        cursor = message.payload.data
-        assert cursor is not None
+    async def notify_my_cursor(message: Message[IdPayload[str]]):
+        id = message.payload.id
+        cursor = await CursorHandler.get(id)
 
         await multicast_my_cursor(cursor)
 

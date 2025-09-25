@@ -1,6 +1,6 @@
 from event.broker import EventBroker
 from event.message import Message
-from event.payload import DataPayload
+from event.payload import IdDataPayload
 
 from data.cursor import Cursor
 from data.board import Tiles, PointRange
@@ -17,7 +17,7 @@ class NotifyWindowChangedReceiver():
     @EventBroker.add_receiver(CursorEvent.WINDOW_SIZE_SET)
     @EventBroker.add_receiver(CursorEvent.MOVED)
     @staticmethod
-    async def notify_window_changed(message: Message[DataPayload[Cursor[Cursor.Targets]]]):
+    async def notify_window_changed(message: Message[IdDataPayload[str, Cursor[Cursor.Targets]]]):
         cur_id = message.payload.id
         old_cur = message.payload.data
 
@@ -84,7 +84,7 @@ def filter_new_targets(old_targets: Cursor.Targets, new_targets: list[Cursor]) -
 
 # TODO: 바뀐 부분만 fetch 할 수 있도록 인터페이스 변경.
 async def fetch_delta_tiles(range: PointRange) -> Tiles:
-    tiles = await BoardHandler.fetch(range.top_left, range.bottom_right)
+    tiles = await BoardHandler.fetch(range)
 
     return tiles
 

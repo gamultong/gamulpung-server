@@ -26,7 +26,7 @@ class ClientEvent(Event):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         event_name = cls.event_name
-        EVENT_DICT[event_name] = type(cls)
+        EVENT_DICT[event_name] = cls
 
 
 class ServerEvent(Event):
@@ -47,12 +47,13 @@ def to_message(event: Event):
     }
 
 
-def get_anno_items(data_type: type[DataObj]):
+def get_anno_items(data_type: Type[DataObj]):
+    print(data_type)
     for key in data_type.__dataclass_fields__:
         yield key, data_type.__annotations__[key]
 
 
-def parsing_type(field_type: type):
+def parsing_type(field_type: Type):
     origin_type = get_origin(field_type)
     if origin_type is None:
         return field_type, None
@@ -114,12 +115,13 @@ def from_message(message: dict):
         raise InvalidEventFormat
 
     try:
-        type = EVENT_DICT[event]
+        _type = EVENT_DICT[event]
+        print(_type, EVENT_DICT)
     except KeyError:
         # event가 존재하지 않음
         raise InvalidEventFormat
 
-    return data_obj_parsing(content, type)
+    return data_obj_parsing(content, _type)
 
 
 class InvalidEventFormat(Exception):

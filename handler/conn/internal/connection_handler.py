@@ -8,57 +8,64 @@ broadcast(list[id], external_event)
 from data.conn.event import ServerEvent, ClientEvent
 from .conn import Conn
 from event.message import Message
-from event.payload import ExternalEventPayload, DataPayload, EventEnum
+from event.payload import ExternalEventPayload, IdDataPayload, EventEnum, IdPayload, Event, set_scope
 from event.broker import EventBroker
 
 
-class CursorEvent(EventEnum):
-    JOIN = "JOIN"
-    QUIT = "QUIT"
+# @set_scope("Connection")
+class ConnectionEvent(EventEnum):
+    JOIN = Event()
+    QUIT = Event()
+    OPEN_TILE = Event()
+    SET_FLAG = Event()
+    MOVE = Event()
+    CHAT = Event()
+    POINTING = Event()
+    SET_WINDOW_SIZE = Event()
 
 
 class ConnectionHandler:
     conn_dict: dict[str, Conn] = {}
 
-    @staticmethod
-    async def join(conn: Conn):
+    @classmethod
+    async def join(cls, conn: Conn):
         ConnectionHandler.conn_dict[conn.id] = conn
 
         await EventBroker.publish(
             Message(
-                event=CursorEvent.JOIN,
-                payload=DataPayload(
-                    conn.id, data=None
+                event=ConnectionEvent.JOIN,
+                payload=IdPayload(
+                    conn.id
                 )
             )
         )
 
-    @staticmethod
-    async def quit(conn: Conn):
+    @classmethod
+    async def quit(cls, conn: Conn):
         del ConnectionHandler.conn_dict[conn.id]
 
         await EventBroker.publish(
             Message(
-                event=CursorEvent.QUIT,
-                payload=DataPayload(
-                    conn.id, data=None
+                event=ConnectionEvent.QUIT,
+                payload=IdPayload(
+                    conn.id
                 )
             )
         )
 
-    @staticmethod
-    async def publish_client_event(conn: Conn, event: ClientEvent.Base):
+    @classmethod
+    async def publish_client_event(cls, conn: Conn, event: ClientEvent.Base):
         await EventBroker.publish(
             Message(
                 event=event.event_name,
-                payload=DataPayload(
+                payload=IdDataPayload(
                     conn.id, data=event
                 )
             )
         )
 
-    @staticmethod
-    async def multicast(target_ids: list[str], external_event: ServerEvent.Base):
+    @classmethod
+    async def multicast(cls, target_ids: list[str], external_event: ServerEvent.Base):
 
         for id in target_ids:
             conn = ConnectionHandler.conn_dict[id]
@@ -73,6 +80,6 @@ class ConnectionHandler:
             )
             await conn.send(msg)
 
-    @staticmethod
-    async def broadcast(external_event: ServerEvent.Base):
+    @classmethod
+    async def broadcast(cls, external_event: ServerEvent.Base):
         pass

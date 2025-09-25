@@ -5,30 +5,30 @@ from data.cursor import Cursor, Color
 from . import cursor_exception as CursorException
 
 from event.payload import DumbHumanException
-from event.broker import publish_data_event
+from event.broker import publish_data_event, EventBroker
 
-from event.payload import EventEnum, DataPayload
+from event.payload import EventEnum, IdDataPayload, Event, set_scope, IdPayload
 
 from handler.storage.interface import KeyValueInterface, ListInterface
 from handler.storage.dict import DictStorage
 from handler.storage.list.array import ArrayListStorage
-from event.broker import publish_data_event
 from event.message import Message
 
-from config import MOVE_RANGE
+from utils.config import Config
 
 from datetime import datetime, timedelta
 from typing import Callable
 
 
+@set_scope("CURSOR")
 class CursorEvent(EventEnum):
-    WINDOW_SIZE_SET = "Cursor.WINDOW_SIZE_SET"
-    MOVED = "Cursor.MOVED"
-    REVIVE = "Cursor.REVIVE"
-    DEATH = "Cursor.DEATH"
-    POINTING = "Cursor.POINTING"
-    CREATED = "Cursor.CREATED"
-    DELETE = "Cursor.DELETE"
+    WINDOW_SIZE_SET = Event()
+    MOVED = Event()
+    REVIVE = Event()
+    DEATH = Event()
+    POINTING = Event()
+    CREATED = Event()
+    DELETE = Event()
 
 
 class CursorHandler:
@@ -222,12 +222,19 @@ class CursorHandler:
 
         await cls.cursor_storage.set(template.id, template)
 
-        await publish_data_event(CursorEvent.CREATED, id=template.id)
+        await EventBroker.publish(
+            Message(
+                event=CursorEvent.CREATED,
+                payload=IdPayload(
+                    id=template.id
+                )
+            )
+        )
 
         return template.copy()
 
     @classmethod
-    async def delete(cls, id: str) -> Cursor:
+    async def delete(cls, id: str) -> None:
         cur = await cls.cursor_storage.get(id)
         if cur is None:
             raise CursorException.NotFound
@@ -249,6 +256,7 @@ class CursorHandler:
         result = []
         for id in await cls.cursor_storage.keys():
             cursor = await cls.cursor_storage.get(id)
+            assert cursor
 
             if not range.is_in(cursor.position):
                 continue
@@ -270,6 +278,7 @@ class CursorHandler:
 
         for id in await cls.cursor_storage.keys():
             cursor = await cls.cursor_storage.get(id)
+            assert cursor
 
             if not is_overlap(cursor.view_range, range):
                 continue
@@ -288,12 +297,16 @@ class CursorHandler:
     @classmethod
     async def get_watchers(cls, cursor: Cursor) -> list[Cursor]:
         ids = await cls.watcher_storage.get(cursor.id)
+        if ids is None:
+            ids = []
 
         return [await cls.get(id) for id in ids]
 
     @classmethod
     async def get_targets(cls, cursor: Cursor) -> list[Cursor]:
         ids = await cls.target_storage.get(cursor.id)
+        if ids is None:
+            ids = []
 
         return [await cls.get(id) for id in ids]
 
@@ -309,7 +322,7 @@ def set_targets(cursor: Cursor, targets: list[Cursor]) -> Cursor[Cursor.Targets]
 
 
 # return -> [a_only, both, b_only]
-def diff_cursors(a_list: list[Cursor], b_list: list[Cursor]) -> tuple[list[Cursor]]:
+def diff_cursors(a_list: list[Cursor], b_list: list[Cursor]) -> tuple[list[Cursor], list[Cursor], list[Cursor]]:
     res = {cur.id: 1 for cur in a_list}
     res.update({cur.id: 1 for cur in b_list})
 
@@ -321,7 +334,7 @@ def diff_cursors(a_list: list[Cursor], b_list: list[Cursor]) -> tuple[list[Curso
     for cur in b_list:
         res[cur.id] += 1
 
-    result = [[], [], []]
+    result = ([], [], [])
     for id, idx in res.items():
         result[idx].append(cur_dict[id])
 
@@ -329,7 +342,7 @@ def diff_cursors(a_list: list[Cursor], b_list: list[Cursor]) -> tuple[list[Curso
 
 
 def get_movable_range(p: Point) -> PointRange:
-    distance = MOVE_RANGE
+    distance = Config.MOVE_RANGE
 
     return PointRange.create_by_mid(p, width=distance, height=distance)
 

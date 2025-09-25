@@ -1,7 +1,7 @@
 from event.broker import EventBroker
 from event.message import Message
 
-from data.payload import DataPayload
+from event.payload import IdDataPayload
 from data.cursor import Cursor
 from data.score import Score
 from data.conn.event import ServerEvent
@@ -15,7 +15,7 @@ from ..utils import multicast
 class CursorDeathReceiver():
     @EventBroker.add_receiver(CursorEvent.DEATH)
     @staticmethod
-    async def cursor_death(message: Message[DataPayload[Cursor]]):
+    async def cursor_death(message: Message[IdDataPayload[str, Cursor]]):
         cursor = message.payload.data
         assert cursor is not None
 

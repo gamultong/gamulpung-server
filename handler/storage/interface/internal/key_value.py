@@ -3,8 +3,7 @@ from typing import Generic, TypeVar, Iterable
 from data.base import DataObj
 
 KEY_TYPE = TypeVar(
-    "KEY_TYPE",
-    bound=DataObj
+    "KEY_TYPE"
 )
 VALUE_TYPE = TypeVar(
     "VALUE_TYPE",

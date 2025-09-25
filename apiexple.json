@@ -1,0 +1,9 @@
+{
+    "header": {
+		"event": "set-window-size"
+	},
+    "content": {
+        "width": 10,
+        "height": 10 
+    }
+}

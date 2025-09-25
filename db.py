@@ -1,5 +1,5 @@
 from aiosqlite import connect, Connection
-from config import DATABASE_PATH
+from utils.config import Config
 
 
 def use_db(func):
@@ -15,6 +15,6 @@ def use_db(func):
 
 async def get_db() -> Connection:
     return await connect(
-        database=DATABASE_PATH,
+        database=Config.DATABASE_PATH,
         isolation_level=None  # AUTOCOMMIT
     )

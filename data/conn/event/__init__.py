@@ -4,9 +4,9 @@ from .internal.base import (
     ValidationException,
     to_message,
     from_message,
-    event,
     InvalidEventFormat
 )
+
 
 class ClientEvent:
     from .internal.base import ClientEvent as Base
@@ -15,10 +15,12 @@ class ClientEvent:
         OpenTile,
         SetFlag,
         Move,
+        Pointing,
         Chat
     )
 
-class ServerEvent: 
+
+class ServerEvent:
     from .internal.base import ServerEvent as Base
     from .internal.server import (
         Error,
@@ -28,4 +30,4 @@ class ServerEvent:
         ScoreboardState,
         Chat,
         Explosion
-    ) 
+    )

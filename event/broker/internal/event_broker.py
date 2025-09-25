@@ -78,6 +78,7 @@ class EventBroker:
     @staticmethod
     async def publish(message: Message):
         if message.event not in EventBroker.event_dict:
+            print(EventBroker.event_dict)
             raise NoMatchingReceiverException(message.event)
 
         coroutines = [EventRecorder.record(timestamp=datetime.now(), msg=message)]
