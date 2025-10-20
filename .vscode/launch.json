@@ -15,6 +15,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "tests.__init__"
+        },
+        {
+            "name": "[Test]Core Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "core.test.__init__"
         }
     ]
 }

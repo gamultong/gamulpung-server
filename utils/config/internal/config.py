@@ -1,7 +1,9 @@
 from .base import Env
 
 from datetime import timedelta
+from dotenv import load_dotenv
 
+load_dotenv(".dev.env")
 
 class Config:
     MINE_KILL_DURATION_SECONDS = Env[timedelta](lambda s: timedelta(seconds=int(s)))

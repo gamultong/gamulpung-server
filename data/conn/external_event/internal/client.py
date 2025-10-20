@@ -2,20 +2,16 @@
 해당 문서 참조 
 - API/WebSocket/client
 """
-from .base import ClientEvent, ValidationException
-from dataclasses import dataclass
+from .base import ClientPayload, ValidationException
 from utils.config import Config
 from data.board import Point
 
 
-@dataclass
-class SetWindowSize(ClientEvent):
-    event_name = "SET_WINDOW_SIZE"
-
+class SetWindowSize(ClientPayload):
     width: int
     height: int
 
-    def assert_valid(self):
+    def validate(self):
         size_limit = (Config.WINDOW_SIZE_LIMIT - 1) / 2
 
         if self.width > size_limit:
@@ -30,41 +26,26 @@ class SetWindowSize(ClientEvent):
             )
 
 
-@dataclass
-class OpenTile(ClientEvent):
-    event_name = "open-tile"
-
+class OpenTile(ClientPayload):
     position: Point
 
 
-@dataclass
-class SetFlag(ClientEvent):
-    event_name = "set-flag"
-
+class SetFlag(ClientPayload):
     position: Point
 
 
-@dataclass
-class Move(ClientEvent):
-    event_name = "move"
-
+class Move(ClientPayload):
     position: Point
 
 
-@dataclass
-class Pointing(ClientEvent):
-    event_name = "pointing"
-
+class Pointing(ClientPayload):
     position: Point
 
 
-@dataclass
-class Chat(ClientEvent):
-    event_name = "chat"
-
+class Chat(ClientPayload):
     message: str
 
-    def assert_valid(self):
+    def validate(self):
         if len(self.message) > Config.CHAT_MAX_LENGTH:
             raise ValidationException(
                 event=self,

@@ -5,23 +5,39 @@ quit(id)
 multycast(list[id], external_event)
 broadcast(list[id], external_event)
 """
-from data.conn.event import ServerEvent, ClientEvent
 from .conn import Conn
 from event.message import Message
 from event.payload import ExternalEventPayload, IdDataPayload, EventEnum, IdPayload, Event, set_scope
-from event.broker import EventBroker
+
+from core.event.frame import Event, EventSet, IdPayload, set_scope
+from core.event.broker import EventBroker
+from data.conn.external_event import ClientPayload, ServerPayload
 
 
-# @set_scope("Connection")
-class ConnectionEvent(EventEnum):
-    JOIN = Event()
-    QUIT = Event()
-    OPEN_TILE = Event()
-    SET_FLAG = Event()
-    MOVE = Event()
-    CHAT = Event()
-    POINTING = Event()
-    SET_WINDOW_SIZE = Event()
+@EventBroker.set_external
+class ClientEvent(EventSet):
+    OPEN_TILE = Event[ClientPayload.OpenTile]
+    SET_FLAG = Event[ClientPayload.SetFlag]
+    MOVE = Event[ClientPayload.Move]
+    CHAT = Event[ClientPayload.Chat]
+    POINTING = Event[ClientPayload.Pointing]
+    SET_WINDOW_SIZE = Event[ClientPayload.SetWindowSize]
+
+
+@EventBroker.set_external
+class ServerEvent(EventSet):
+    CHAT = Event[ServerPayload.Chat]
+    CURSORS_STATE = Event[ServerPayload.CursorsState]
+    EXPLOSION = Event[ServerPayload.Explosion]
+    MY_CURSOR = Event[ServerPayload.MyCursor]
+    SCOREBOARD_STATE = Event[ServerPayload.ScoreboardState]
+    TILES_STATE = Event[ServerPayload.TilesState]
+
+
+@set_scope("Connection")
+class ConnectionEvent(EventSet):
+    JOIN = Event[IdPayload]
+    QUIT = Event[IdPayload]
 
 
 class ConnectionHandler:

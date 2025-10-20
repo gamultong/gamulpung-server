@@ -1,13 +1,7 @@
 import os
-from dotenv import load_dotenv
-from datetime import timedelta
 from typing import Callable, TypeVar, Generic
 
 T = TypeVar("T")
-
-if os.environ.get("ENV") != "prod":
-    load_dotenv(".dev.env")
-
 
 class Env(Generic[T]):
     def __init__(self, func: Callable[[str], T] | None = None) -> None:

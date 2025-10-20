@@ -13,7 +13,7 @@ class ChatExternalReceiver():
     @staticmethod
     async def chat(msg: Message[IdDataPayload[str, ClientEvent.Chat]]):
         cur_id = msg.payload.id
-        content = msg.payload.data.content
+        content = msg.payload.data.message
 
         cursor = await CursorHandler.get(cur_id)
 
