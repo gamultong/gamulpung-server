@@ -199,3 +199,12 @@ class CursorHandler:
         watching_rel = watching_rel and watching_id in CursorHandler.watching[watcher_id]
 
         return watcher_rel and watching_rel
+
+    # TODO : test 작성
+    @staticmethod
+    def add_score(cursor_id: str, score: int):
+        cur = CursorHandler.get_cursor(cursor_id)
+        assert cur
+
+        cur.score += score
+        return cur.score

@@ -35,7 +35,10 @@ from message.payload import (
     NewCursorCandidatePayload,
     ChatEvent,
     ChatPayload,
-    SendChatPayload
+    SendChatPayload,
+    ScoreEvent,
+    AddScorePayload,
+    ScoreNotifyPayload
 )
 from config import Config
 
@@ -554,6 +557,25 @@ class CursorEventHandler:
                 cursor_id=sender,
                 message=content
             )
+        )
+
+        await EventBroker.publish(message)
+
+    @EventBroker.add_receiver(ScoreEvent.ADD_SCORE)
+    @staticmethod
+    async def receive_send_chat(message: Message[AddScorePayload]):
+        cur_id = message.payload.cursor_id
+        score = message.payload.score
+
+        current_score = CursorHandler.add_score(cur_id, score)
+
+        watchers = CursorHandler.get_watchers(cur_id)
+
+        message = Message(
+            event="multicast",
+            header={"target_conns": [cursor.id for cursor in watchers],
+                    "origin_event": ScoreEvent.SCORE_NOTIFY},
+            payload=ScoreNotifyPayload(cur_id, score=current_score)
         )
 
         await EventBroker.publish(message)
