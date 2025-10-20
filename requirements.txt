@@ -28,3 +28,4 @@ uvicorn==0.32.0
 watchfiles==0.24.0
 websockets==14.1
 wrapt==1.17.0
+dodoenv==0.1.0

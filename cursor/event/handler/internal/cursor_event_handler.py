@@ -37,7 +37,11 @@ from message.payload import (
     ChatPayload,
     SendChatPayload
 )
-from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
+from config import Config
+
+MINE_KILL_DURATION_SECONDS = Config.MINE_KILL_DURATION_SECONDS
+VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
+CHAT_MAX_LENGTH = Config.CHAT_MAX_LENGTH
 
 
 class CursorEventHandler:

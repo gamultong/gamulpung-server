@@ -40,7 +40,10 @@ from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
 from data_layer.board import Point, Tile, Tiles
-from config import VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
+from config import Config
+
+VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
+CHAT_MAX_LENGTH = Config.CHAT_MAX_LENGTH
 
 """
 CursorEventHandler Test
