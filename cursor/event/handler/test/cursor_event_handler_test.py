@@ -646,7 +646,8 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         await CursorEventHandler.receive_movable_result(message)
 
         # moved 이벤트만 발행됨
-        self.assertEqual(len(mock.mock_calls), 1)
+        # self.assertEqual(len(mock.mock_calls), 1)
+        self.assertEqual(len(mock.mock_calls), 2)
 
         # moved
         got: Message[MovedPayload] = mock.mock_calls[0].args[0]
@@ -698,7 +699,8 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         await CursorEventHandler.receive_movable_result(message)
 
         # cursors 이벤트만 발행됨
-        self.assertEqual(len(mock.mock_calls), 1)
+        # self.assertEqual(len(mock.mock_calls), 1)
+        self.assertEqual(len(mock.mock_calls), 2)
 
         # cursors
         got: Message[CursorsPayload] = mock.mock_calls[0].args[0]
@@ -757,7 +759,8 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         await CursorEventHandler.receive_movable_result(message)
 
         # cursors, moved 이벤트 발행됨
-        self.assertEqual(len(mock.mock_calls), 2)
+        # self.assertEqual(len(mock.mock_calls), 2)
+        self.assertEqual(len(mock.mock_calls), 3)
 
         # cursors
         got: Message[CursorsPayload] = mock.mock_calls[1].args[0]
@@ -826,7 +829,8 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
 
         await CursorEventHandler.receive_movable_result(message)
 
-        mock.assert_not_called()
+        # mock.assert_not_called()
+        mock.assert_called_once()
 
         # watcher 관계 확인
         c_watchings = CursorHandler.get_watching("C")

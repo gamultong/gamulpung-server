@@ -214,15 +214,6 @@ class CursorEventHandler:
 
         await EventBroker.publish(message)
 
-        message = Message(
-            event=ScoreEvent.ADD_SCORE,
-            payload=AddScorePayload(
-                cursor_id=sender,
-                score=1
-            )
-        )
-        await EventBroker.publish(message)
-
     @EventBroker.add_receiver(MoveEvent.MOVABLE_RESULT)
     @staticmethod
     async def receive_movable_result(message: Message[MovableResultPayload]):
@@ -322,6 +313,14 @@ class CursorEventHandler:
             )
 
         await asyncio.gather(*publish_coroutines)
+        message = Message(
+            event=ScoreEvent.ADD_SCORE,
+            payload=AddScorePayload(
+                cursor_id=receiver,
+                score=1
+            )
+        )
+        await EventBroker.publish(message)
 
     @EventBroker.add_receiver(InteractionEvent.SINGLE_TILE_OPENED)
     @staticmethod
