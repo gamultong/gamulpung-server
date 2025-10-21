@@ -40,10 +40,7 @@ from .fixtures import setup_cursor_locations
 import unittest
 from unittest.mock import AsyncMock, patch
 from data_layer.board import Point, Tile, Tiles
-from config import Config
-
-VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
-CHAT_MAX_LENGTH = Config.CHAT_MAX_LENGTH
+from config import VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
 
 """
 CursorEventHandler Test
@@ -512,6 +509,7 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         await CursorEventHandler.receive_moving(message)
 
         # check-movable 이벤트 발행 확인
+        mock.assert_called_once()
         got = mock.mock_calls[0].args[0]
         self.assertEqual(type(got), Message)
         self.assertEqual(got.event, MoveEvent.CHECK_MOVABLE)
@@ -524,8 +522,6 @@ class CursorEventHandler_MovingReceiver_TestCase(unittest.IsolatedAsyncioTestCas
         # 새로운 위치에 대해 check-movable 발행하는지 확인
         self.assertEqual(type(got.payload), CheckMovablePayload)
         self.assertEqual(got.payload.position, message.payload.position)
-
-        # TODO : add_score 확인
 
     @patch("event.EventBroker.publish")
     async def test_receive_moving_same_position(self, mock: AsyncMock):

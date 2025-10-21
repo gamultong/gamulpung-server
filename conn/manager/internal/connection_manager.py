@@ -1,4 +1,3 @@
-from limits import storage, strategies, parse
 import asyncio
 from fastapi.websockets import WebSocket
 from data_layer.conn import Conn
@@ -9,8 +8,8 @@ from message.payload import (
 from event import EventBroker
 from uuid import uuid4
 
-from config import Config
-MESSAGE_RATE_LIMIT = Config.MESSAGE_RATE_LIMIT
+from config import MESSAGE_RATE_LIMIT
+from limits import storage, strategies, parse
 
 
 def overwrite_event(msg: Message):
