@@ -582,7 +582,7 @@ class CursorEventHandler:
 
         message = Message(
             event="multicast",
-            header={"target_conns": [cursor.id for cursor in watchers],
+            header={"target_conns": [cur_id, *(cursor.id for cursor in watchers)],
                     "origin_event": ScoreEvent.SCORE_NOTIFY},
             payload=ScoreNotifyPayload(cur_id, score=current_score)
         )
