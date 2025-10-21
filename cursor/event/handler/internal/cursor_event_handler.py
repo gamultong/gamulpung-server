@@ -572,7 +572,7 @@ class CursorEventHandler:
 
     @EventBroker.add_receiver(ScoreEvent.ADD_SCORE)
     @staticmethod
-    async def receive_send_chat(message: Message[AddScorePayload]):
+    async def receiver_add_score(message: Message[AddScorePayload]):
         cur_id = message.payload.cursor_id
         score = message.payload.score
 

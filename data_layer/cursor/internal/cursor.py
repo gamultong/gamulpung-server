@@ -14,7 +14,7 @@ class Cursor(DataObj):
     color: Color
     width: int
     height: int
-    score: int
+    score: int = 0
     _revive_at: datetime | None = None
 
     @property
