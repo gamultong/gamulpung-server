@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+import unittest
 import asyncio
 from data_layer.cursor import Color
 from data_layer.board import Point, Tile, Tiles, Section
@@ -26,10 +28,10 @@ from message.payload import (
     ErrorEvent,
     ErrorPayload
 )
-from config import VIEW_SIZE_LIMIT
+from config import Config
 
-import unittest
-from unittest.mock import AsyncMock, patch
+VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
+
 
 """
 BoardEventHandler Test
@@ -564,7 +566,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertFalse(got.payload.pointable)
         self.assertEqual(got.payload.pointer, pointer)
 
-    @ patch("event.EventBroker.publish")
+    @patch("event.EventBroker.publish")
     async def test_check_movable_true(self, mock: AsyncMock):
         new_position = Point(0, 0)
         message = Message(
@@ -591,7 +593,7 @@ class BoardEventHandler_PointingReceiver_TestCase(unittest.IsolatedAsyncioTestCa
         self.assertEqual(got.payload.position, new_position)
         self.assertTrue(got.payload.movable)
 
-    @ patch("event.EventBroker.publish")
+    @patch("event.EventBroker.publish")
     async def test_check_movable_false(self, mock: AsyncMock):
         new_position = Point(1, 0)
         message = Message(

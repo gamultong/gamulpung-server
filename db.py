@@ -1,7 +1,8 @@
 import asyncio
 from aiosqlite import connect
-from config import DATABASE_PATH
+from config import Config
 
+DATABASE_PATH = Config.DATABASE_PATH
 db = None
 
 

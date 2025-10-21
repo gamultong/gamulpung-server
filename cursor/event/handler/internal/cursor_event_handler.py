@@ -35,9 +35,16 @@ from message.payload import (
     NewCursorCandidatePayload,
     ChatEvent,
     ChatPayload,
-    SendChatPayload
+    SendChatPayload,
+    ScoreEvent,
+    AddScorePayload,
+    ScoreNotifyPayload
 )
-from config import MINE_KILL_DURATION_SECONDS, VIEW_SIZE_LIMIT, CHAT_MAX_LENGTH
+from config import Config
+
+MINE_KILL_DURATION_SECONDS = Config.MINE_KILL_DURATION_SECONDS
+VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
+CHAT_MAX_LENGTH = Config.CHAT_MAX_LENGTH
 
 
 class CursorEventHandler:
@@ -205,6 +212,15 @@ class CursorEventHandler:
             )
         )
 
+        await EventBroker.publish(message)
+
+        message = Message(
+            event=ScoreEvent.ADD_SCORE,
+            payload=AddScorePayload(
+                cursor_id=sender,
+                score=1
+            )
+        )
         await EventBroker.publish(message)
 
     @EventBroker.add_receiver(MoveEvent.MOVABLE_RESULT)
@@ -550,6 +566,25 @@ class CursorEventHandler:
                 cursor_id=sender,
                 message=content
             )
+        )
+
+        await EventBroker.publish(message)
+
+    @EventBroker.add_receiver(ScoreEvent.ADD_SCORE)
+    @staticmethod
+    async def receiver_add_score(message: Message[AddScorePayload]):
+        cur_id = message.payload.cursor_id
+        score = message.payload.score
+
+        current_score = CursorHandler.add_score(cur_id, score)
+
+        watchers = CursorHandler.get_watchers(cur_id)
+
+        message = Message(
+            event="multicast",
+            header={"target_conns": [cursor.id for cursor in watchers],
+                    "origin_event": ScoreEvent.SCORE_NOTIFY},
+            payload=ScoreNotifyPayload(cur_id, score=current_score)
         )
 
         await EventBroker.publish(message)

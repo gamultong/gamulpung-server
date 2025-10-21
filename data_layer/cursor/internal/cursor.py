@@ -14,6 +14,7 @@ class Cursor(DataObj):
     color: Color
     width: int
     height: int
+    score: int = 0
     _revive_at: datetime | None = None
 
     @property
@@ -64,5 +65,6 @@ class Cursor(DataObj):
             pointer=None,
             color=Color.get_random(),
             width=0,
-            height=0
+            height=0,
+            score=0
         )

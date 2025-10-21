@@ -4,3 +4,7 @@ t.py
 __pycache__/
 
 gamulpung.db
+.claude/
+text.txt
+
+labs/

@@ -25,7 +25,9 @@ from message.payload import (
     ErrorEvent,
     ErrorPayload
 )
-from config import VIEW_SIZE_LIMIT
+from config import Config
+
+VIEW_SIZE_LIMIT = Config.VIEW_SIZE_LIMIT
 
 
 class BoardEventHandler():
